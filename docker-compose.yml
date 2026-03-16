@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  marotrade:
+    build: .
+    container_name: marotrade-intelligence
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app   # Recharge le code en temps réel (utile en dev)
+    restart: unless-stopped
