@@ -16,8 +16,9 @@ import shap
 
 from data_sources import (
     get_trade_data, get_accord_score, get_wb_scores,
-    get_diaspora, get_logistique
+    get_diaspora, get_logistique, ACCORDS_MAROC
 )
+from dynamic_growth import enrich_with_growth, interpret_growth, growth_label
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -126,6 +127,8 @@ class MarketScoringEngine:
                 # Dimension 1 — Marché
                 "value_usd":    row["value_usd"],
                 "growth_pct":   row.get("growth_pct", 5.0),
+                "velocity":     row.get("velocity", 0.0),
+                "momentum":     row.get("momentum", 5.0),
                 "price_usd_kg": row.get("price_usd_kg", row["value_usd"] / max(row["weight_kg"], 1)),
                 # Dimension 2 — Accord commercial
                 "droits":       accord["droits"],
@@ -171,7 +174,10 @@ class MarketScoringEngine:
 
         # Dimension 1 — Marché (plus grand = mieux, plus croissance = mieux, meilleur prix = mieux)
         n["vol_norm"]    = norm(df["value_usd"])
-        n["growth_norm"] = norm(df["growth_pct"])
+        if "momentum" in df.columns and df["momentum"].std() > 0:
+            n["growth_norm"] = norm(df["momentum"])
+        else:
+            n["growth_norm"] = norm(df["growth_pct"])
         n["prix_norm"]   = norm(df["price_usd_kg"])
 
         # Dimension 2 — Accord (moins de droits = mieux, ALE = mieux)
@@ -312,7 +318,10 @@ class MarketScoringEngine:
             contribution=round(score_marche * WEIGHTS["marche"], 1),
             detail={
                 "Volume importé": f"{row['value_usd']/1e6:.1f}M USD/an",
-                "Croissance":     f"+{row['growth_pct']:.1f}%/an",
+                "CAGR 3 ans":     f"+{row['growth_pct']:.1f}%/an",
+                "Velocite":       f"{row.get('velocity', 0):+.1f} pts",
+                "Momentum":       f"{row.get('momentum', row['growth_pct']):.1f} — {growth_label(row.get('momentum', row['growth_pct']))}",
+
                 "Prix moyen":     f"{row['price_usd_kg']:.2f} USD/kg",
             },
             interpretation=self._interpret_marche(row, n_row),
@@ -408,11 +417,11 @@ class MarketScoringEngine:
             parts.append(f"Marché moyen de {row['value_usd']/1e6:.1f}M USD/an")
         else:
             parts.append(f"Marché de niche, {row['value_usd']/1e6:.1f}M USD/an")
-        if row["growth_pct"] > 10:
-            parts.append(f"croissance forte (+{row['growth_pct']:.1f}%/an)")
-        elif row["growth_pct"] > 5:
-            parts.append(f"croissance modérée (+{row['growth_pct']:.1f}%/an)")
-        return ", ".join(parts) + "."
+        cagr = row.get("growth_pct", 5.0)
+        velocity = row.get("velocity", 0.0)
+        momentum = row.get("momentum", cagr)
+        parts.append(interpret_growth(cagr, velocity, momentum))
+        return " ".join(parts)
 
     def _interpret_accord(self, row):
         t = row.get("accord_label", "")
@@ -509,6 +518,10 @@ class MarketScoringEngine:
         # Données brutes
         print("  ① Chargement des données commerciales...")
         trade_df = get_trade_data(hs_code)
+
+        # Enrichissement croissance dynamique 3 ans
+        print("  ① Enrichissement croissance dynamique (CAGR 3 ans)...")
+        trade_df = enrich_with_growth(trade_df, hs_code, set(ACCORDS_MAROC.keys()))
 
         # Matrice de features
         print("  ② Construction de la matrice de features (6 dimensions)...")
