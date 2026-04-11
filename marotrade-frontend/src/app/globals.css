@@ -6,6 +6,8 @@
   --color-secondary:  #F1F5F9;
   --color-border:     #E5E7EB;
   --color-primary:    #2563EB;
+  --color-primary-foreground: #FFFFFF;
+  --color-ai:         #8B5CF6;
   --color-success:    #16A34A;
   --color-warning:    #F59E0B;
   --color-danger:     #DC2626;
@@ -14,9 +16,24 @@
   --color-text-muted:   #94A3B8;
   --font-sans: 'Inter', sans-serif;
   --font-display: 'Inter', sans-serif;
+
+  --animate-fade-in: fadeIn 0.5s ease-in-out;
+  --animate-slide-up: slideUp 0.4s ease-out;
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 }
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+}
 
 body {
   background-color: #F8FAFC;
@@ -24,6 +41,13 @@ body {
 }
 
 /* Custom scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
