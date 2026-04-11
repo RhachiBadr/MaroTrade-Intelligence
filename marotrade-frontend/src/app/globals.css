@@ -1,32 +1,36 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-background: #F8FAFC;
+  --color-background: #FAFAFA;
   --color-card:       #FFFFFF;
-  --color-secondary:  #F1F5F9;
-  --color-border:     #E5E7EB;
-  --color-primary:    #2563EB;
+  --color-secondary:  #F4F4F5;
+  --color-border:     #E4E4E7;
+  --color-primary:    #0066FF;
   --color-primary-foreground: #FFFFFF;
   --color-ai:         #8B5CF6;
-  --color-success:    #16A34A;
+  --color-success:    #10B981;
   --color-warning:    #F59E0B;
-  --color-danger:     #DC2626;
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #475569;
-  --color-text-muted:   #94A3B8;
+  --color-danger:     #EF4444;
+  --color-text-primary: #09090B;
+  --color-text-secondary: #52525B;
+  --color-text-muted:   #A1A1AA;
   --font-sans: 'Inter', sans-serif;
   --font-display: 'Inter', sans-serif;
 
-  --animate-fade-in: fadeIn 0.5s ease-in-out;
-  --animate-slide-up: slideUp 0.4s ease-out;
+  --animate-fade-in: fadeIn 0.5s ease-out;
+  --animate-slide-up: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  --shadow-premium: 0 4px 24px -4px rgba(0, 0, 0, 0.04), 0 2px 12px -2px rgba(0, 0, 0, 0.03);
+  --shadow-premium-hover: 0 12px 32px -4px rgba(0, 102, 255, 0.1), 0 4px 16px -2px rgba(0, 102, 255, 0.06);
+  --shadow-glow: 0 0 0 2px rgba(0, 102, 255, 0.2);
 
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
   }
   @keyframes slideUp {
-    from { opacity: 0; transform: translateY(16px); }
+    from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
   }
 }
@@ -36,8 +40,8 @@ html {
 }
 
 body {
-  background-color: #F8FAFC;
-  color: #0F172A;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
 }
 
 /* Custom scrollbar */
@@ -48,6 +52,9 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: var(--color-border);
   border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
 }

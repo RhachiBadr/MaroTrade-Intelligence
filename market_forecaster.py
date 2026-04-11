@@ -488,7 +488,7 @@ class MarketForecaster:
 def plot_forecast(
     forecast: MarketForecast,
     show_confidence: bool = True,
-) -> "go.Figure":
+):
     """
     Génère un graphique Plotly avec historique + prévision + intervalle.
 
@@ -567,7 +567,7 @@ def plot_forecast(
     return fig
 
 
-def plot_forecast_comparison(forecasts: dict, top_n: int = 5) -> "go.Figure":
+def plot_forecast_comparison(forecasts: dict, top_n: int = 5):
     """
     Graphique comparatif des prévisions 2026 pour tous les pays.
 

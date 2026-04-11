@@ -71,44 +71,35 @@ def get_score(req: ScoreRequest):
     if not scoring_engine:
         raise HTTPException(status_code=500, detail="Moteur de scoring non chargé.")
     
-    # Exécution du scoring
+    # Exécution du scoring v2.0
     try:
-        results = scoring_engine.score_markets(req.hs_code, req.product_name)
+        results = scoring_engine.run(req.product_name, req.hs_code, top_n=req.top_n)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-    # Transformation en JSON pour le frontend
-    # Les datatypes Python customisés (XGBoost, Numpy, etc.) doivent être castés en natifs
     response_data = []
     
-    # Limiter aux N meilleurs  (la fonction score_markets trie déjà)
-    top_results = results[:req.top_n]
-    
-    for r in top_results:
+    for r in results:
         # Simplification et conformation à l'interface MarketResult TypeScript
         dims = []
-        for nom, data in r.dimensions.items():
+        for d in r.dimensions:
             dims.append({
-                "nom": nom,
-                "score": float(data['score']),
-                "poids": float(data['poids']),
-                "contribution": float(data['contribution']),
-                "detail": {k: str(v) for k, v in data.get('detail', {}).items()},
-                "interpretation": str(data.get('interpretation', ''))
+                "nom": d.nom,
+                "score": float(d.score),
+                "poids": float(d.poids),
+                "contribution": float(d.contribution),
+                "detail": {k: str(v) for k, v in d.detail.items()},
+                "interpretation": str(d.interpretation)
             })
             
         acc_info = r.accord_info.copy()
-        
-        # Le forecast (C04) n'est pas complètement intégré par défaut dans scoring_engine,
-        # mais la structure Data_Sources peut contenir le dynamique.
-        # Ici on retransmet juste l'interface de base.
         
         response_data.append({
             "rank": int(r.rank),
             "country": {
                 "code": r.country_code,
                 "name": r.country_name,
-                "flag": r.country_flag
+                "flag": r.country_code
             },
             "score_final": float(r.score_final),
             "score_weighted": float(r.score_weighted),
@@ -119,9 +110,9 @@ def get_score(req: ScoreRequest):
             "top_risques": list(r.top_risques),
             "accord_info": acc_info,
             "logistique": {
-                "distance_km": float(r.logistique.get('distance_km', 0)),
-                "lpi": float(r.logistique.get('lpi', 0)),
-                "cout_conteneur": float(r.logistique.get('cout_conteneur', 0))
+                "distance_km": float(r.logistique_info.get('distance_km', 0)),
+                "lpi": float(r.logistique_info.get('lpi', 0)),
+                "cout_conteneur": float(r.logistique_info.get('cout_conteneur_usd', 0))
             }
         })
         
