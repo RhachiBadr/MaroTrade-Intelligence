@@ -7,26 +7,26 @@ import { Search, Globe, ShieldCheck, TrendingUp, ArrowRight, Sparkles } from 'lu
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 
 const FEATURES = [
-  { 
-    icon: Globe, 
-    title: 'Scoring IA de Marché', 
+  {
+    icon: Globe,
+    title: 'Scoring IA de Marché',
     desc: 'Analyse multicritère (XGBoost) sur 15 indicateurs clés pour classer vos opportunités avec précision.',
     gradient: 'from-blue-500/5 to-primary/5',
     iconBg: 'bg-primary shadow-primary/30',
     textColor: 'text-primary'
   },
-  { 
-    icon: ShieldCheck, 
-    title: 'Veille Réglementaire', 
-    desc: 'Analyse sémantique (Claude 3.5 Haiku) pointue des normes complexes EUR-Lex, RASFF et FDA.',
+  {
+    icon: ShieldCheck,
+    title: 'Veille Réglementaire',
+    desc: 'Analyse sémantique pointue des normes complexes EUR-Lex, RASFF et FDA.',
     gradient: 'from-emerald-500/5 to-emerald-600/5',
     iconBg: 'bg-success shadow-success/30',
     textColor: 'text-success'
   },
-  { 
-    icon: TrendingUp, 
-    title: 'Prévisions Stratégiques', 
-    desc: 'Modélisation avancée (Comet/Prophet) pour anticiper avec exactitude les tendances mondiales 2026.',
+  {
+    icon: TrendingUp,
+    title: 'Prévisions Stratégiques',
+    desc: 'Modélisation avancée pour anticiper avec exactitude les tendances mondiales 2026.',
     gradient: 'from-purple-500/5 to-purple-600/5',
     iconBg: 'bg-purple-600 shadow-purple-600/30',
     textColor: 'text-purple-600'
@@ -74,7 +74,7 @@ export default function LandingPage() {
   return (
     <div className="max-w-[1040px] mx-auto py-16 px-4">
       {/* Hero Section */}
-      <motion.section 
+      <motion.section
         className="mb-24 text-center sm:text-left flex flex-col items-center sm:items-start"
         variants={containerVariants}
         initial="hidden"
@@ -84,12 +84,12 @@ export default function LandingPage() {
           <Sparkles className="w-4 h-4 text-primary animate-pulse" />
           <span className="text-xs font-bold text-primary tracking-wide">La nouvelle référence de l'intelligence export</span>
         </motion.div>
-        
+
         <motion.h1 variants={itemVariants} className="text-5xl lg:text-7xl font-extrabold text-text-primary mb-6 tracking-tight leading-[1.05]">
           Éclairez chaque marché <br className="hidden sm:block" />
           avec <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500">l'intelligence artificielle</span>
         </motion.h1>
-        
+
         <motion.p variants={itemVariants} className="text-lg lg:text-xl text-text-secondary max-w-2xl mb-12 leading-relaxed font-medium">
           La plateforme d'analyse stratégique ultime pour les entreprises marocaines. Identifiez vos meilleures opportunités, surmontez les barrières réglementaires et anticipez la demande.
         </motion.p>
@@ -98,7 +98,7 @@ export default function LandingPage() {
         <motion.div variants={itemVariants} className="w-full max-w-3xl relative z-20">
           <form onSubmit={handleSubmit} className="relative group">
             <div className={`absolute -inset-1 bg-gradient-to-r from-primary to-blue-400 rounded-[2rem] blur-md transition-opacity duration-500 ${isFocused ? 'opacity-30' : 'opacity-0 group-hover:opacity-10'}`} />
-            
+
             <div className={`relative flex flex-col sm:flex-row items-center bg-white border ${isFocused ? 'border-primary/50' : 'border-border'} rounded-[1.5rem] shadow-premium transition-all duration-300`}>
               <div className="pl-6 pr-3 py-4 hidden sm:block">
                 <Search className={`w-6 h-6 transition-colors duration-300 ${isFocused ? 'text-primary' : 'text-text-muted'}`} />
@@ -123,7 +123,7 @@ export default function LandingPage() {
             {/* Suggestions Dropdown */}
             <AnimatePresence>
               {isFocused && suggestions.length > 0 && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 10, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -151,8 +151,8 @@ export default function LandingPage() {
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-6">
             <span className="text-xs font-bold text-text-muted uppercase tracking-widest mr-2">Produits Phares :</span>
             {HS_CATALOGUE.slice(0, 4).map((p) => (
-              <button 
-                key={`badge-${p.hs_code}`} 
+              <button
+                key={`badge-${p.hs_code}`}
                 onClick={() => handleSelect(p.label, p.hs_code)}
                 className="text-[13px] font-semibold text-text-secondary bg-white shadow-sm border border-border/80 px-4 py-1.5 rounded-full hover:border-primary/40 hover:text-primary hover:shadow-md transition-all active:scale-95"
               >
@@ -164,7 +164,7 @@ export default function LandingPage() {
       </motion.section>
 
       {/* Features Grid */}
-      <motion.section 
+      <motion.section
         className="grid lg:grid-cols-3 gap-6 mb-24"
         initial="hidden"
         whileInView="visible"
@@ -172,8 +172,8 @@ export default function LandingPage() {
         variants={containerVariants}
       >
         {FEATURES.map((f, idx) => (
-          <motion.div 
-            key={f.title} 
+          <motion.div
+            key={f.title}
             variants={itemVariants}
             className="relative bg-white border border-border/60 rounded-3xl p-8 hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-300 group overflow-hidden z-10"
           >
@@ -192,7 +192,7 @@ export default function LandingPage() {
       </motion.section>
 
       {/* Social Proof / Stats */}
-      <motion.section 
+      <motion.section
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
@@ -204,7 +204,7 @@ export default function LandingPage() {
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-[100px] -mr-20 -mt-20 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-400/5 rounded-full blur-[100px] -ml-20 -mb-20 pointer-events-none" />
         </div>
-        
+
         <div className="relative z-10">
           <h2 className="text-3xl lg:text-4xl font-extrabold text-text-primary mb-5 tracking-tight">
             Des données fiables pour une croissance fulgurante
@@ -212,7 +212,7 @@ export default function LandingPage() {
           <p className="text-text-secondary text-lg max-w-2xl mx-auto mb-16 font-medium">
             MaroTrade Intelligence agrège et filtre les sources les plus complexes pour garantir la précision absolue de vos stratégies d'expansion.
           </p>
-          
+
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-10">
             {[
               { label: 'Indicateurs IA', value: '15' },
@@ -220,7 +220,7 @@ export default function LandingPage() {
               { label: 'Précisions Forecast', value: '94%' },
               { label: 'Mise à jour Data', value: '24h' },
             ].map((stat, idx) => (
-              <motion.div 
+              <motion.div
                 key={stat.label}
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
@@ -237,14 +237,14 @@ export default function LandingPage() {
       </motion.section>
 
       {/* Final CTA */}
-      <motion.section 
+      <motion.section
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
         className="mt-24 text-center pb-12 relative"
       >
-        <Link 
-          href="/analyze" 
+        <Link
+          href="/analyze"
           className="group relative inline-flex items-center justify-center gap-3 bg-text-primary text-white font-bold px-12 py-5 rounded-2xl hover:bg-gray-800 transition-all duration-300 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.6)] hover:-translate-y-1 active:scale-[0.98]"
         >
           <span className="relative z-10 flex items-center gap-2">
