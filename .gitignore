@@ -23,3 +23,9 @@ Thumbs.db
 
 # Cache de données locales
 .cache_marotrade/
+node_modules/
+.cache_c02/
+package-lock.json
+package.json
+node_modules
+marotrade-frontend/node_modules/
