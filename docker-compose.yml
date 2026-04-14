@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   marotrade:
     build: .
@@ -9,3 +7,21 @@ services:
     volumes:
       - .:/app   # Recharge le code en temps réel (utile en dev)
     restart: unless-stopped
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: marotrade-postgres
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: rootpassword
+      POSTGRES_DB: marotrade_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
