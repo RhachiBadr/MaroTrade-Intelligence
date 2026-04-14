@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
-from scoring_engine import MarketScoringEngine, WEIGHTS
+from scoring_engine import MarketScoringEngine, WEIGHTS_DEFAULT as WEIGHTS
 
 # ═══════════════════════════════════════════════════════════════
 # CONFIG PAGE

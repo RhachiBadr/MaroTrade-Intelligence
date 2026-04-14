@@ -10,15 +10,28 @@ services:
     depends_on:
       - postgres
 
+  frontend:
+    image: node:20-alpine
+    container_name: marotrade-frontend
+    working_dir: /app/marotrade-frontend
+    volumes:
+      - .:/app
+      - /app/marotrade-frontend/node_modules
+    ports:
+      - "3000:3000"
+    command: sh -c "npm install && npm run dev"
+    depends_on:
+      - marotrade
+
   postgres:
     image: postgres:15-alpine
     container_name: marotrade-postgres
     environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: rootpassword
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
       POSTGRES_DB: marotrade_db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
