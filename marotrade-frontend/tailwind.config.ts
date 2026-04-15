@@ -3,48 +3,85 @@ import type { Config } from 'tailwindcss'
 const config: Config = {
   darkMode: 'class',
   content: [
-    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {
       colors: {
-        background: '#F8FAFC',
-        card:       '#FFFFFF',
-        secondary:  '#F1F5F9',
-        border:     '#E5E7EB',
+        background: 'var(--color-background)',
+        surface: 'var(--color-surface)',
+        border: 'var(--color-border)',
         primary: {
-          DEFAULT: '#2563EB',
-          foreground: '#FFFFFF',
+          DEFAULT: 'var(--color-primary)',
+          hover: 'var(--color-primary-hover)',
+          50: 'var(--color-primary-50)',
+          100: 'var(--color-primary-100)',
+          200: 'var(--color-primary-200)',
+          300: 'var(--color-primary-300)',
+          400: 'var(--color-primary-400)',
+          500: 'var(--color-primary-500)',
+          600: 'var(--color-primary-600)',
+          700: 'var(--color-primary-700)',
+          800: 'var(--color-primary-800)',
+          900: 'var(--color-primary-900)',
+          950: 'var(--color-primary-950)',
         },
-        ai: {
-          DEFAULT: '#8B5CF6', // Purple for AI features
+        accent: {
+          DEFAULT: 'var(--color-accent)',
+          50: 'var(--color-accent-50)',
+          500: 'var(--color-accent-500)',
+          600: 'var(--color-accent-600)',
         },
-        success: '#16A34A',
-        warning: '#F59E0B',
-        danger:  '#DC2626',
+        danger: {
+          DEFAULT: 'var(--color-danger)',
+          50: 'var(--color-danger-50)',
+          500: 'var(--color-danger-500)',
+          600: 'var(--color-danger-600)',
+        },
+        warning: {
+          DEFAULT: 'var(--color-warning)',
+          50: 'var(--color-warning-50)',
+          500: 'var(--color-warning-500)',
+          600: 'var(--color-warning-600)',
+        },
         text: {
-          primary:   '#0F172A',
-          secondary: '#475569',
-          muted:     '#94A3B8',
+          primary: 'var(--color-text-primary)',
+          secondary: 'var(--color-text-secondary)',
+          muted: 'var(--color-text-muted)',
         },
       },
       fontFamily: {
-        sans:    ['Inter', 'sans-serif'],
-        display: ['Inter', 'sans-serif'], // User wants clean/minimal, Inter works best for both
+        sans: ['Inter', 'sans-serif'],
+      },
+      boxShadow: {
+        sm: 'var(--shadow-sm)',
+        md: 'var(--shadow-md)',
+        lg: 'var(--shadow-lg)',
+      },
+      borderRadius: {
+        sm: 'var(--radius-sm)',
+        md: 'var(--radius-md)',
+        lg: 'var(--radius-lg)',
+        xl: 'var(--radius-xl)',
+        full: 'var(--radius-full)',
       },
       animation: {
-        'fade-in':    'fadeIn 0.5s ease-in-out',
-        'slide-up':   'slideUp 0.4s ease-out',
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'shimmer': 'shimmer 2s infinite linear',
+        'slide-down': 'slideDown 200ms ease-out forwards',
       },
       keyframes: {
-        fadeIn:  { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
-        slideUp: { '0%': { opacity: '0', transform: 'translateY(16px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+        shimmer: {
+          '0%': { backgroundPosition: '-1000px 0' },
+          '100%': { backgroundPosition: '1000px 0' },
+        },
+        slideDown: {
+          from: { opacity: '0', transform: 'translateY(-8px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        }
       },
     },
   },
   plugins: [],
 }
+
 export default config

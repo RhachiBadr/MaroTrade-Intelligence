@@ -1,264 +1,171 @@
 'use client'
+import { Plus, MoreVertical, FileText, ArrowRight } from 'lucide-react'
+import { TrendBadge } from '@/components/atoms/TrendBadge'
+import { AlertBadge } from '@/components/atoms/AlertBadge'
+import { CountryFlag } from '@/components/atoms/CountryFlag'
+import { ScoreCard } from '@/components/atoms/ScoreCard'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { HS_CATALOGUE, searchHS } from '@/lib/hs-catalogue'
-import { Search, Globe, ShieldCheck, TrendingUp, ArrowRight, Sparkles } from 'lucide-react'
-import { motion, AnimatePresence, Variants } from 'framer-motion'
 
-const FEATURES = [
-  {
-    icon: Globe,
-    title: 'Scoring IA de Marché',
-    desc: 'Analyse multicritère (XGBoost) sur 15 indicateurs clés pour classer vos opportunités avec précision.',
-    gradient: 'from-blue-500/5 to-primary/5',
-    iconBg: 'bg-primary shadow-primary/30',
-    textColor: 'text-primary'
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Veille Réglementaire',
-    desc: 'Analyse sémantique pointue des normes complexes EUR-Lex, RASFF et FDA.',
-    gradient: 'from-emerald-500/5 to-emerald-600/5',
-    iconBg: 'bg-success shadow-success/30',
-    textColor: 'text-success'
-  },
-  {
-    icon: TrendingUp,
-    title: 'Prévisions Stratégiques',
-    desc: 'Modélisation avancée pour anticiper avec exactitude les tendances mondiales 2026.',
-    gradient: 'from-purple-500/5 to-purple-600/5',
-    iconBg: 'bg-purple-600 shadow-purple-600/30',
-    textColor: 'text-purple-600'
-  },
-]
-
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    }
-  }
-}
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
-}
-
-export default function LandingPage() {
-  const router = useRouter()
-  const [query, setQuery] = useState('')
-  const [suggestions, setSuggestions] = useState<typeof HS_CATALOGUE>([])
-  const [isFocused, setIsFocused] = useState(false)
-
-  function handleInput(val: string) {
-    setQuery(val)
-    setSuggestions(val.length >= 2 ? searchHS(val) : [])
-  }
-
-  function handleSelect(label: string, hs: string) {
-    router.push(`/analyze?product=${encodeURIComponent(label.replace(/^[^ ]+ /, ''))}&hs=${hs}`)
-  }
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!query) return
-    const match = searchHS(query)[0]
-    if (match) handleSelect(match.label, match.hs_code)
-    else router.push(`/analyze?product=${encodeURIComponent(query)}`)
-  }
-
+export default function DashboardPage() {
   return (
-    <div className="max-w-[1040px] mx-auto py-16 px-4">
-      {/* Hero Section */}
-      <motion.section
-        className="mb-24 text-center sm:text-left flex flex-col items-center sm:items-start"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/10 mb-8 cursor-default group hover:bg-primary/10 transition-colors">
-          <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-          <span className="text-xs font-bold text-primary tracking-wide">La nouvelle référence de l'intelligence export</span>
-        </motion.div>
+    <div className="max-w-6xl mx-auto space-y-8 pb-12">
+      {/* 1. Greeting & Quick Actions */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Bonjour, Admin 👋</h1>
+          <p className="text-sm text-text-muted mt-1">14 Avril 2026 · Votre dernier rapport sur le <strong>Safran (Espagne)</strong> montre un score de 82%.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button className="px-4 py-2 bg-surface border border-border hover:bg-background text-text-primary text-sm font-semibold rounded-md transition-colors shadow-sm">
+            Rapport PDF
+          </button>
+          <button className="px-4 py-2 bg-surface border border-border hover:bg-background text-text-primary text-sm font-semibold rounded-md transition-colors shadow-sm">
+            Voir mes marchés
+          </button>
+          <Link href="/analyze" className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-md transition-colors shadow-sm flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Lancer une analyse
+          </Link>
+        </div>
+      </div>
 
-        <motion.h1 variants={itemVariants} className="text-5xl lg:text-7xl font-extrabold text-text-primary mb-6 tracking-tight leading-[1.05]">
-          Éclairez chaque marché <br className="hidden sm:block" />
-          avec <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500">l'intelligence artificielle</span>
-        </motion.h1>
-
-        <motion.p variants={itemVariants} className="text-lg lg:text-xl text-text-secondary max-w-2xl mb-12 leading-relaxed font-medium">
-          La plateforme d'analyse stratégique ultime pour les entreprises marocaines. Identifiez vos meilleures opportunités, surmontez les barrières réglementaires et anticipez la demande.
-        </motion.p>
-
-        {/* Search Bar (Stripe Style) */}
-        <motion.div variants={itemVariants} className="w-full max-w-3xl relative z-20">
-          <form onSubmit={handleSubmit} className="relative group">
-            <div className={`absolute -inset-1 bg-gradient-to-r from-primary to-blue-400 rounded-[2rem] blur-md transition-opacity duration-500 ${isFocused ? 'opacity-30' : 'opacity-0 group-hover:opacity-10'}`} />
-
-            <div className={`relative flex flex-col sm:flex-row items-center bg-white border ${isFocused ? 'border-primary/50' : 'border-border'} rounded-[1.5rem] shadow-premium transition-all duration-300`}>
-              <div className="pl-6 pr-3 py-4 hidden sm:block">
-                <Search className={`w-6 h-6 transition-colors duration-300 ${isFocused ? 'text-primary' : 'text-text-muted'}`} />
+      {/* 2. KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Marchés analysés', value: '42', trend: +12, sparkline: [20, 30, 25, 40, 35, 42] },
+          { label: 'Opportunités détectées', value: '18', trend: +3, sparkline: [5, 8, 12, 10, 15, 18] },
+          { label: 'Alertes réglementaires', value: '3', trend: -2, isNegativeGood: true, sparkline: [8, 7, 5, 5, 4, 3] },
+          { label: 'Score moyen', value: '76%', trend: +4, sparkline: [60, 65, 70, 68, 72, 76] },
+        ].map((kpi, i) => (
+          <div key={i} className="bg-surface border border-border rounded-lg p-5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 group">
+            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">{kpi.label}</p>
+            <div className="flex items-end justify-between">
+              <div className="flex flex-col gap-2">
+                <span className="text-3xl font-bold text-text-primary">{kpi.value}</span>
+                <TrendBadge value={kpi.trend} isPositive={kpi.isNegativeGood ? kpi.trend <= 0 : kpi.trend > 0} />
               </div>
-              <input
-                type="text"
-                value={query}
-                onChange={e => handleInput(e.target.value)}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-                placeholder="Quel produit souhaitez-vous analyser ? (ex: Safran, Argan)"
-                className="w-full sm:flex-1 py-4 px-6 sm:px-0 text-text-primary placeholder:text-text-muted bg-transparent outline-none text-lg font-medium"
-              />
-              <div className="p-2 w-full sm:w-auto">
-                <button type="submit" className="w-full sm:w-auto bg-primary text-white font-bold px-8 py-3.5 rounded-xl hover:bg-blue-700 transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-[0_2px_10px_rgba(0,102,255,0.3)]">
-                  Analyser
-                  <ArrowRight className="w-5 h-5" />
-                </button>
+              <div className="w-16 h-8 flex items-end justify-between opacity-40 group-hover:opacity-100 transition-opacity">
+                {kpi.sparkline.map((val, idx) => (
+                  <div key={idx} className="w-1.5 bg-primary-600 rounded-t-sm" style={{ height: `${(val / Math.max(...kpi.sparkline)) * 100}%` }} />
+                ))}
               </div>
             </div>
-
-            {/* Suggestions Dropdown */}
-            <AnimatePresence>
-              {isFocused && suggestions.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute top-[calc(100%+12px)] left-0 right-0 bg-white border border-border/60 rounded-2xl shadow-premium overflow-hidden z-50 backdrop-blur-xl bg-white/90"
-                >
-                  <div className="p-2">
-                    {suggestions.map((s, idx) => (
-                      <button
-                        key={`${s.hs_code}-${idx}`}
-                        type="button"
-                        onMouseDown={() => handleSelect(s.label, s.hs_code)}
-                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm text-text-secondary hover:bg-secondary/80 hover:text-text-primary transition-all group"
-                      >
-                        <span className="font-medium group-hover:translate-x-1 transition-transform">{s.label}</span>
-                        <span className="text-xs font-mono bg-secondary px-2 py-1.5 rounded-md text-text-muted group-hover:bg-white group-hover:shadow-sm transition-all border border-transparent group-hover:border-border/50">HS {s.hs_code}</span>
-                      </button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </form>
-
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-6">
-            <span className="text-xs font-bold text-text-muted uppercase tracking-widest mr-2">Produits Phares :</span>
-            {HS_CATALOGUE.slice(0, 4).map((p) => (
-              <button
-                key={`badge-${p.hs_code}`}
-                onClick={() => handleSelect(p.label, p.hs_code)}
-                className="text-[13px] font-semibold text-text-secondary bg-white shadow-sm border border-border/80 px-4 py-1.5 rounded-full hover:border-primary/40 hover:text-primary hover:shadow-md transition-all active:scale-95"
-              >
-                {p.label}
-              </button>
-            ))}
           </div>
-        </motion.div>
-      </motion.section>
-
-      {/* Features Grid */}
-      <motion.section
-        className="grid lg:grid-cols-3 gap-6 mb-24"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={containerVariants}
-      >
-        {FEATURES.map((f, idx) => (
-          <motion.div
-            key={f.title}
-            variants={itemVariants}
-            className="relative bg-white border border-border/60 rounded-3xl p-8 hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-300 group overflow-hidden z-10"
-          >
-            <div className={`absolute inset-0 bg-gradient-to-br ${f.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10`} />
-            <div className="flex flex-col h-full">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-8 shadow-lg ${f.iconBg} transform group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}>
-                <f.icon className="w-7 h-7" />
-              </div>
-              <h3 className="text-xl font-bold text-text-primary mb-3 tracking-tight group-hover:text-primary transition-colors">{f.title}</h3>
-              <p className="text-text-secondary text-[15px] leading-relaxed font-medium">
-                {f.desc}
-              </p>
-            </div>
-          </motion.div>
         ))}
-      </motion.section>
+      </div>
 
-      {/* Social Proof / Stats */}
-      <motion.section
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.7 }}
-        className="bg-card border border-border/60 rounded-[3rem] p-12 lg:p-20 text-center relative overflow-hidden shadow-premium"
-      >
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(#0066FF 2px, transparent 0)', backgroundSize: '40px 40px' }} />
-          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-[100px] -mr-20 -mt-20 pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-400/5 rounded-full blur-[100px] -ml-20 -mb-20 pointer-events-none" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* 3. Analyses Récentes (Takes 2/3 width) */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-text-primary">Analyses récentes</h2>
+            <button className="text-sm font-semibold text-primary-600 hover:text-primary-700">Tout voir →</button>
+          </div>
+          <div className="bg-surface border border-border rounded-lg shadow-sm overflow-hidden">
+            <table className="w-full text-left text-sm whitespace-nowrap">
+              <thead className="bg-background text-xs text-text-muted font-semibold uppercase tracking-wider border-b border-border">
+                <tr>
+                  <th className="px-5 py-3">Produit</th>
+                  <th className="px-5 py-3">Marché</th>
+                  <th className="px-5 py-3">Score IA</th>
+                  <th className="px-5 py-3">Tendance</th>
+                  <th className="px-5 py-3">Date</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {[
+                  { product: "Huile d'Argan", market: "États-Unis", code: "US", score: 88, trend: 5, date: "il y a 2h" },
+                  { product: "Safran", market: "Espagne", code: "ES", score: 82, trend: 12, date: "Hier" },
+                  { product: "Phosphates", market: "Brésil", code: "BR", score: 75, trend: -3, date: "12 Avr" },
+                  { product: "Tapis artisanaux", market: "France", code: "FR", score: 62, trend: -1, date: "10 Avr" },
+                  { product: "Agrumes", market: "Royaume-Uni", code: "GB", score: 91, trend: 8, date: "08 Avr" },
+                ].map((row, i) => (
+                  <tr key={i} className="hover:bg-background/50 transition-colors">
+                    <td className="px-5 py-4 font-semibold text-text-primary flex items-center gap-2">
+                      {row.product}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-2">
+                        <CountryFlag code={row.code} name={row.market} />
+                        <span className="font-medium text-text-secondary">{row.market}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${row.score > 80 ? 'bg-success' : row.score > 70 ? 'bg-warning-500' : 'bg-danger-600'}`} />
+                        <span className="font-bold text-text-primary">{row.score}%</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <TrendBadge value={row.trend} />
+                    </td>
+                    <td className="px-5 py-4 text-text-muted">{row.date}</td>
+                    <td className="px-5 py-4 text-right">
+                      <button className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-border transition-colors">
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <div className="relative z-10">
-          <h2 className="text-3xl lg:text-4xl font-extrabold text-text-primary mb-5 tracking-tight">
-            Des données fiables pour une croissance fulgurante
-          </h2>
-          <p className="text-text-secondary text-lg max-w-2xl mx-auto mb-16 font-medium">
-            MaroTrade Intelligence agrège et filtre les sources les plus complexes pour garantir la précision absolue de vos stratégies d'expansion.
-          </p>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-10">
+        {/* 4. Alertes & Veille (Takes 1/3 width) */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-text-primary">Alertes & Veille</h2>
+          </div>
+          <div className="bg-surface border border-border rounded-lg shadow-sm p-1 divide-y divide-border">
             {[
-              { label: 'Indicateurs IA', value: '15' },
-              { label: 'Marchés analysés', value: '40+' },
-              { label: 'Précisions Forecast', value: '94%' },
-              { label: 'Mise à jour Data', value: '24h' },
-            ].map((stat, idx) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1, duration: 0.5 }}
-                className="flex flex-col items-center justify-center p-6 rounded-2xl bg-white/50 border border-border/30 backdrop-blur-sm"
-              >
-                <div className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-primary to-blue-500 mb-2">{stat.value}</div>
-                <div className="text-xs font-bold text-text-secondary uppercase tracking-widest">{stat.label}</div>
-              </motion.div>
+              { severity: 'critical', title: 'Nouvelle taxe douanière (USA)', time: 'il y a 4h', desc: '+5% sur les huiles cosmétiques.' },
+              { severity: 'warning', title: 'Baisse de demande (FR)', time: 'il y a 1j', desc: 'Chute de 12% des requêtes import sur le safran.' },
+              { severity: 'info', title: 'Accord de libre-échange (UK)', time: '12 Avr', desc: 'Nouveau quota pour les agrumes marocains.' },
+            ].map((alert, i) => (
+              <div key={i} className="p-4 hover:bg-background/50 transition-colors group">
+                <div className="flex items-start justify-between mb-1">
+                  <AlertBadge severity={alert.severity as 'critical' | 'warning' | 'info'} label={alert.severity === 'critical' ? 'Urgent' : alert.severity === 'warning' ? 'Attention' : 'Veille'} />
+                  <span className="text-[10px] font-semibold text-text-muted">{alert.time}</span>
+                </div>
+                <h3 className="text-sm font-semibold text-text-primary mt-2">{alert.title}</h3>
+                <p className="text-xs text-text-secondary mt-1">{alert.desc}</p>
+                <button className="text-xs font-semibold text-primary-600 mt-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">Voir détails <ArrowRight className="w-3 h-3" /></button>
+              </div>
             ))}
           </div>
         </div>
-      </motion.section>
+      </div>
 
-      {/* Final CTA */}
-      <motion.section
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        className="mt-24 text-center pb-12 relative"
-      >
-        <Link
-          href="/analyze"
-          className="group relative inline-flex items-center justify-center gap-3 bg-text-primary text-white font-bold px-12 py-5 rounded-2xl hover:bg-gray-800 transition-all duration-300 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.6)] hover:-translate-y-1 active:scale-[0.98]"
-        >
-          <span className="relative z-10 flex items-center gap-2">
-            Lancer votre analyse gratuite
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </span>
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-transparent opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity duration-300" />
-        </Link>
-        <p className="mt-6 text-sm font-semibold text-text-muted flex items-center justify-center gap-2">
-          <span>Aucun engagement</span>
-          <span className="w-1 h-1 rounded-full bg-border" />
-          <span>Rapports générés en moins de 60s</span>
-        </p>
-      </motion.section>
+      {/* 5. Top Marchés Recommandés */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-bold text-text-primary">Top Marchés Recommandés</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { market: 'États-Unis', code: 'US', score: 88, desc: ["Demande en hausse de 15%", "Faible barrière douanière"] },
+            { market: 'Allemagne', code: 'DE', score: 84, desc: ["Achat direct B2B privilégié", "Forte marge potentielle"] },
+            { market: 'Émirats (EAU)', code: 'AE', score: 79, desc: ["Hub régional logistique", "Exonération de TVA applicable"] },
+          ].map((market, i) => (
+            <div key={i} className="bg-surface border border-border rounded-lg p-5 shadow-sm hover:shadow-md transition-all flex flex-col gap-4">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                  <CountryFlag code={market.code} name={market.market} />
+                  <h3 className="font-bold text-text-primary">{market.market}</h3>
+                </div>
+                <ScoreCard score={market.score} />
+              </div>
+              <ul className="space-y-2 mt-auto">
+                {market.desc.map((d, j) => (
+                  <li key={j} className="text-xs font-medium text-text-secondary flex items-start gap-2">
+                    <span className="text-accent w-3 h-3 shrink-0">✓</span> {d}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
