@@ -1,6 +1,8 @@
 @import 'tailwindcss';
 
-@theme {
+/* Theme Variables Implementation */
+:root {
+  /* Common Core Colors (Static) */
   --color-primary-50: #EBF5FF;
   --color-primary-100: #E1EFFE;
   --color-primary-200: #C3DDFD;
@@ -25,90 +27,85 @@
   --color-warning-500: #D08112;
   --color-warning-600: #C27803;
 
-  --color-primary: var(--color-primary-value);
-  --color-primary-hover: var(--color-primary-hover-value);
-  --color-accent: var(--color-accent-value);
-  --color-danger: var(--color-danger-value);
-  --color-warning: var(--color-warning-value);
-
-  --color-background: var(--color-background-value);
-  --color-surface: var(--color-surface-value);
-  --color-border: var(--color-border-value);
-  --color-text-primary: var(--color-text-primary-value);
-  --color-text-secondary: var(--color-text-secondary-value);
-  --color-text-muted: var(--color-text-muted-value);
-
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Dynamic Semantic Colors (Re-assigned in Dark Mode) */
+  --background: #F9FAFB;
+  --surface: #FFFFFF;
+  --border: #E5E7EB;
+  --primary: #1A56DB;
+  --primary-hover: #1E429F;
+  --accent: #0E9F6E;
+  --danger: #E02424;
+  --warning: #C27803;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #9CA3AF;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
 
+.dark {
+  --background: #111827;
+  --surface: #1F2937;
+  --border: #374151;
+  --primary: #3F83F8;
+  --primary-hover: #76A9FA;
+  --accent: #31C48D;
+  --danger: #F05252;
+  --warning: #D08112;
+  --text-primary: #F9FAFB;
+  --text-secondary: #D1D5DB;
+  --text-muted: #9CA3AF;
+}
+
+@theme {
+  --color-primary-50: var(--color-primary-50);
+  --color-primary-100: var(--color-primary-100);
+  --color-primary-200: var(--color-primary-200);
+  --color-primary-300: var(--color-primary-300);
+  --color-primary-400: var(--color-primary-400);
+  --color-primary-500: var(--color-primary-500);
+  --color-primary-600: var(--color-primary-600);
+  --color-primary-700: var(--color-primary-700);
+  --color-primary-800: var(--color-primary-800);
+  --color-primary-900: var(--color-primary-900);
+  --color-primary-950: var(--color-primary-950);
+
+  --color-accent-50: var(--color-accent-50);
+  --color-accent-500: var(--color-accent-500);
+  --color-accent-600: var(--color-accent-600);
+
+  --color-danger-50: var(--color-danger-50);
+  --color-danger-500: var(--color-danger-500);
+  --color-danger-600: var(--color-danger-600);
+
+  --color-warning-50: var(--color-warning-50);
+  --color-warning-500: var(--color-warning-500);
+  --color-warning-600: var(--color-warning-600);
+
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-full: 9999px;
-
-  --animate-shimmer: shimmer 2s infinite linear;
-  --animate-slide-down: slideDown 200ms ease-out forwards;
-
-  @keyframes shimmer {
-    0% {
-      background-position: -1000px 0;
-    }
-
-    100% {
-      background-position: 1000px 0;
-    }
-  }
-
-  @keyframes slideDown {
-    from {
-      opacity: 0;
-      transform: translateY(-8px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
 }
 
 @layer base {
-  :root {
-    --color-background-value: #F9FAFB;
-    --color-surface-value: #FFFFFF;
-    --color-border-value: #E5E7EB;
-
-    --color-primary-value: var(--color-primary-600);
-    --color-primary-hover-value: var(--color-primary-700);
-    --color-accent-value: var(--color-accent-600);
-    --color-danger-value: var(--color-danger-600);
-    --color-warning-value: var(--color-warning-600);
-
-    --color-text-primary-value: #111827;
-    --color-text-secondary-value: #4B5563;
-    --color-text-muted-value: #9CA3AF;
-  }
-
-  .dark {
-    --color-background-value: #111827;
-    --color-surface-value: #1F2937;
-    --color-border-value: #374151;
-
-    --color-primary-value: var(--color-primary-500);
-    --color-primary-hover-value: var(--color-primary-400);
-    --color-accent-value: var(--color-accent-500);
-    --color-danger-value: var(--color-danger-500);
-    --color-warning-value: var(--color-warning-500);
-
-    --color-text-primary-value: #F9FAFB;
-    --color-text-secondary-value: #D1D5DB;
-    --color-text-muted-value: #9CA3AF;
-  }
-
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

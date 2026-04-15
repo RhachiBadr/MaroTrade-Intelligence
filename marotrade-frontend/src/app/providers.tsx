@@ -20,28 +20,37 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light')
   const [mounted, setMounted] = useState(false)
 
+  // 1. Initial mounting and theme recovery
   useEffect(() => {
-    setMounted(true)
     const storedTheme = localStorage.getItem('theme') as Theme | null
     if (storedTheme) {
       setThemeState(storedTheme)
     } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
       setThemeState('dark')
     }
+    setMounted(true)
   }, [])
 
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme)
-    localStorage.setItem('theme', newTheme)
-    if (newTheme === 'dark') {
+  // 2. Continuous synchronization with the DOM
+  useEffect(() => {
+    if (!mounted) return
+    
+    console.log('Switching to theme:', theme)
+    
+    if (theme === 'dark') {
       document.documentElement.classList.add('dark')
     } else {
       document.documentElement.classList.remove('dark')
     }
+    localStorage.setItem('theme', theme)
+  }, [theme, mounted])
+
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme)
   }
 
   const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark')
+    setThemeState(prev => prev === 'dark' ? 'light' : 'dark')
   }
 
   return (
