@@ -1,177 +1,171 @@
 'use client'
+import { Plus, MoreVertical, FileText, ArrowRight } from 'lucide-react'
+import { TrendBadge } from '@/components/atoms/TrendBadge'
+import { AlertBadge } from '@/components/atoms/AlertBadge'
+import { CountryFlag } from '@/components/atoms/CountryFlag'
+import { ScoreCard } from '@/components/atoms/ScoreCard'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { HS_CATALOGUE, searchHS } from '@/lib/hs-catalogue'
-import { Search, Globe, ShieldCheck, TrendingUp, ArrowRight } from 'lucide-react'
 
-const FEATURES = [
-  { 
-    icon: Globe, 
-    title: 'Scoring IA de Marché', 
-    desc: 'Analyse multicritère (XGBoost) sur 15 indicateurs clés pour classer vos opportunités.',
-    color: 'bg-primary/10 text-primary'
-  },
-  { 
-    icon: ShieldCheck, 
-    title: 'Veille Réglementaire', 
-    desc: 'Analyse sémantique (Claude 3.5 Haiku) des normes EUR-Lex, RASFF et FDA.',
-    color: 'bg-green-50 text-success'
-  },
-  { 
-    icon: TrendingUp, 
-    title: 'Prévisions Stratégiques', 
-    desc: 'Modélisation Comet/Prophet pour anticiper les tendances de consommation 2026.',
-    color: 'bg-purple-50 text-purple-600'
-  },
-]
-
-export default function LandingPage() {
-  const router = useRouter()
-  const [query, setQuery] = useState('')
-  const [suggestions, setSuggestions] = useState<typeof HS_CATALOGUE>([])
-
-  function handleInput(val: string) {
-    setQuery(val)
-    setSuggestions(val.length >= 2 ? searchHS(val) : [])
-  }
-
-  function handleSelect(label: string, hs: string) {
-    router.push(`/analyze?product=${encodeURIComponent(label.replace(/^[^ ]+ /, ''))}&hs=${hs}`)
-  }
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!query) return
-    const match = searchHS(query)[0]
-    if (match) handleSelect(match.label, match.hs_code)
-    else router.push(`/analyze?product=${encodeURIComponent(query)}`)
-  }
-
+export default function DashboardPage() {
   return (
-    <div className="max-w-6xl mx-auto py-12">
-      {/* Hero Section */}
-      <section className="mb-16">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10 mb-6 group cursor-default">
-          <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-xs font-semibold text-primary uppercase tracking-wider">Solution d'Intelligence Export</span>
+    <div className="max-w-6xl mx-auto space-y-8 pb-12">
+      {/* 1. Greeting & Quick Actions */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Bonjour, Admin 👋</h1>
+          <p className="text-sm text-text-muted mt-1">14 Avril 2026 · Votre dernier rapport sur le <strong>Safran (Espagne)</strong> montre un score de 82%.</p>
         </div>
-        
-        <h1 className="text-5xl lg:text-6xl font-extrabold text-text-primary mb-6 tracking-tight leading-[1.1]">
-          Propulsez votre export avec<br />
-          <span className="text-primary">l'intelligence artificielle</span>
-        </h1>
-        
-        <p className="text-lg text-text-secondary max-w-2xl mb-10 leading-relaxed font-medium">
-          Identifiez vos meilleurs marchés, anticipez les freins réglementaires et visualisez 
-          les tendances de demain. Conçu pour les PME marocaines ambitieuses.
-        </p>
-
-        {/* Search Bar (Stripe Style) */}
-        <form onSubmit={handleSubmit} className="relative max-w-2xl group">
-          <div className="relative flex items-center bg-white border border-border rounded-2xl p-1.5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] group-focus-within:border-primary/30 group-focus-within:ring-4 group-focus-within:ring-primary/5 transition-all">
-            <div className="pl-4 pr-2">
-              <Search className="w-5 h-5 text-text-muted" />
-            </div>
-            <input
-              type="text"
-              value={query}
-              onChange={e => handleInput(e.target.value)}
-              placeholder="Quel produit souhaitez-vous exporter ? (ex: Safran, Huile d'Argan)"
-              className="flex-1 py-3 text-text-primary placeholder:text-text-muted bg-transparent outline-none text-base"
-            />
-            <button type="submit" className="bg-primary text-white font-bold px-6 py-3 rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2">
-              Analyser
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Suggestions */}
-          {suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-border rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-300">
-              {suggestions.map((s) => (
-                <button
-                  key={s.hs_code}
-                  type="button"
-                  onClick={() => handleSelect(s.label, s.hs_code)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-sm text-text-secondary hover:bg-secondary hover:text-text-primary transition-colors border-b border-border/50 last:border-0"
-                >
-                  <span className="font-medium">{s.label}</span>
-                  <span className="text-xs font-mono bg-secondary px-2 py-1 rounded text-text-muted uppercase">HS {s.hs_code}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </form>
-
-        <div className="flex flex-wrap items-center gap-3 mt-6">
-          <span className="text-xs font-semibold text-text-muted uppercase tracking-widest mr-2">Suggestions :</span>
-          {HS_CATALOGUE.slice(0, 4).map((p) => (
-            <button 
-              key={p.hs_code} 
-              onClick={() => handleSelect(p.label, p.hs_code)}
-              className="text-xs font-semibold text-text-secondary bg-white border border-border px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
-            >
-              {p.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          <button className="px-4 py-2 bg-surface border border-border hover:bg-background text-text-primary text-sm font-semibold rounded-md transition-colors shadow-sm">
+            Rapport PDF
+          </button>
+          <button className="px-4 py-2 bg-surface border border-border hover:bg-background text-text-primary text-sm font-semibold rounded-md transition-colors shadow-sm">
+            Voir mes marchés
+          </button>
+          <Link href="/analyze" className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-md transition-colors shadow-sm flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Lancer une analyse
+          </Link>
         </div>
-      </section>
+      </div>
 
-      {/* Features Grid */}
-      <section className="grid md:grid-cols-3 gap-6 mb-16">
-        {FEATURES.map((f) => (
-          <div key={f.title} className="bg-white border border-border rounded-2xl p-8 hover:shadow-lg transition-all duration-300 group">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform ${f.color}`}>
-              <f.icon className="w-6 h-6" />
+      {/* 2. KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Marchés analysés', value: '42', trend: +12, sparkline: [20, 30, 25, 40, 35, 42] },
+          { label: 'Opportunités détectées', value: '18', trend: +3, sparkline: [5, 8, 12, 10, 15, 18] },
+          { label: 'Alertes réglementaires', value: '3', trend: -2, isNegativeGood: true, sparkline: [8, 7, 5, 5, 4, 3] },
+          { label: 'Score moyen', value: '76%', trend: +4, sparkline: [60, 65, 70, 68, 72, 76] },
+        ].map((kpi, i) => (
+          <div key={i} className="bg-surface border border-border rounded-lg p-5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 group">
+            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">{kpi.label}</p>
+            <div className="flex items-end justify-between">
+              <div className="flex flex-col gap-2">
+                <span className="text-3xl font-bold text-text-primary">{kpi.value}</span>
+                <TrendBadge value={kpi.trend} isPositive={kpi.isNegativeGood ? kpi.trend <= 0 : kpi.trend > 0} />
+              </div>
+              <div className="w-16 h-8 flex items-end justify-between opacity-40 group-hover:opacity-100 transition-opacity">
+                {kpi.sparkline.map((val, idx) => (
+                  <div key={idx} className="w-1.5 bg-primary-600 rounded-t-sm" style={{ height: `${(val / Math.max(...kpi.sparkline)) * 100}%` }} />
+                ))}
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-text-primary mb-3">{f.title}</h3>
-            <p className="text-text-secondary text-sm leading-relaxed font-medium">
-              {f.desc}
-            </p>
           </div>
         ))}
-      </section>
+      </div>
 
-      {/* Social Proof / Stats */}
-      <section className="bg-white border border-border rounded-[2.5rem] p-12 text-center relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#2563EB 1px, transparent 0)', backgroundSize: '40px 40px' }} />
-        
-        <h2 className="text-3xl font-extrabold text-text-primary mb-4">
-          La data au service de votre croissance
-        </h2>
-        <p className="text-text-secondary max-w-xl mx-auto mb-12 font-medium">
-          MaroTrade Intelligence regroupe les sources les plus fiables pour garantir la précision de vos analyses stratégiques.
-        </p>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* 3. Analyses Récentes (Takes 2/3 width) */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-text-primary">Analyses récentes</h2>
+            <button className="text-sm font-semibold text-primary-600 hover:text-primary-700">Tout voir →</button>
+          </div>
+          <div className="bg-surface border border-border rounded-lg shadow-sm overflow-hidden">
+            <table className="w-full text-left text-sm whitespace-nowrap">
+              <thead className="bg-background text-xs text-text-muted font-semibold uppercase tracking-wider border-b border-border">
+                <tr>
+                  <th className="px-5 py-3">Produit</th>
+                  <th className="px-5 py-3">Marché</th>
+                  <th className="px-5 py-3">Score IA</th>
+                  <th className="px-5 py-3">Tendance</th>
+                  <th className="px-5 py-3">Date</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {[
+                  { product: "Huile d'Argan", market: "États-Unis", code: "US", score: 88, trend: 5, date: "il y a 2h" },
+                  { product: "Safran", market: "Espagne", code: "ES", score: 82, trend: 12, date: "Hier" },
+                  { product: "Phosphates", market: "Brésil", code: "BR", score: 75, trend: -3, date: "12 Avr" },
+                  { product: "Tapis artisanaux", market: "France", code: "FR", score: 62, trend: -1, date: "10 Avr" },
+                  { product: "Agrumes", market: "Royaume-Uni", code: "GB", score: 91, trend: 8, date: "08 Avr" },
+                ].map((row, i) => (
+                  <tr key={i} className="hover:bg-background/50 transition-colors">
+                    <td className="px-5 py-4 font-semibold text-text-primary flex items-center gap-2">
+                      {row.product}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-2">
+                        <CountryFlag code={row.code} name={row.market} />
+                        <span className="font-medium text-text-secondary">{row.market}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${row.score > 80 ? 'bg-success' : row.score > 70 ? 'bg-warning-500' : 'bg-danger-600'}`} />
+                        <span className="font-bold text-text-primary">{row.score}%</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <TrendBadge value={row.trend} />
+                    </td>
+                    <td className="px-5 py-4 text-text-muted">{row.date}</td>
+                    <td className="px-5 py-4 text-right">
+                      <button className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-border transition-colors">
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* 4. Alertes & Veille (Takes 1/3 width) */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-text-primary">Alertes & Veille</h2>
+          </div>
+          <div className="bg-surface border border-border rounded-lg shadow-sm p-1 divide-y divide-border">
+            {[
+              { severity: 'critical', title: 'Nouvelle taxe douanière (USA)', time: 'il y a 4h', desc: '+5% sur les huiles cosmétiques.' },
+              { severity: 'warning', title: 'Baisse de demande (FR)', time: 'il y a 1j', desc: 'Chute de 12% des requêtes import sur le safran.' },
+              { severity: 'info', title: 'Accord de libre-échange (UK)', time: '12 Avr', desc: 'Nouveau quota pour les agrumes marocains.' },
+            ].map((alert, i) => (
+              <div key={i} className="p-4 hover:bg-background/50 transition-colors group">
+                <div className="flex items-start justify-between mb-1">
+                  <AlertBadge severity={alert.severity as 'critical' | 'warning' | 'info'} label={alert.severity === 'critical' ? 'Urgent' : alert.severity === 'warning' ? 'Attention' : 'Veille'} />
+                  <span className="text-[10px] font-semibold text-text-muted">{alert.time}</span>
+                </div>
+                <h3 className="text-sm font-semibold text-text-primary mt-2">{alert.title}</h3>
+                <p className="text-xs text-text-secondary mt-1">{alert.desc}</p>
+                <button className="text-xs font-semibold text-primary-600 mt-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">Voir détails <ArrowRight className="w-3 h-3" /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Top Marchés Recommandés */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-bold text-text-primary">Top Marchés Recommandés</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            { label: 'Indicateurs IA', value: '15' },
-            { label: 'Marchés analysés', value: '40+' },
-            { label: 'Précision Forecast', value: '94%' },
-            { label: 'Mise à jour', value: '24h' },
-          ].map((stat) => (
-            <div key={stat.label}>
-              <div className="text-4xl font-black text-primary mb-1">{stat.value}</div>
-              <div className="text-xs font-bold text-text-muted uppercase tracking-widest">{stat.label}</div>
+            { market: 'États-Unis', code: 'US', score: 88, desc: ["Demande en hausse de 15%", "Faible barrière douanière"] },
+            { market: 'Allemagne', code: 'DE', score: 84, desc: ["Achat direct B2B privilégié", "Forte marge potentielle"] },
+            { market: 'Émirats (EAU)', code: 'AE', score: 79, desc: ["Hub régional logistique", "Exonération de TVA applicable"] },
+          ].map((market, i) => (
+            <div key={i} className="bg-surface border border-border rounded-lg p-5 shadow-sm hover:shadow-md transition-all flex flex-col gap-4">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                  <CountryFlag code={market.code} name={market.market} />
+                  <h3 className="font-bold text-text-primary">{market.market}</h3>
+                </div>
+                <ScoreCard score={market.score} />
+              </div>
+              <ul className="space-y-2 mt-auto">
+                {market.desc.map((d, j) => (
+                  <li key={j} className="text-xs font-medium text-text-secondary flex items-start gap-2">
+                    <span className="text-accent w-3 h-3 shrink-0">✓</span> {d}
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="mt-16 text-center">
-        <Link 
-          href="/analyze" 
-          className="inline-flex items-center gap-3 bg-text-primary text-white font-bold px-10 py-5 rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-gray-200"
-        >
-          Démarrer une analyse gratuite
-          <ArrowRight className="w-5 h-5" />
-        </Link>
-        <p className="mt-6 text-sm font-medium text-text-muted">
-          Pas d'abonnement requis · Analyse complète en 60s
-        </p>
-      </section>
+      </div>
     </div>
   )
 }

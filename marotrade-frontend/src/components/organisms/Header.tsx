@@ -1,41 +1,60 @@
 'use client'
-import { Bell, Search, User } from 'lucide-react'
+import { Bell, Search, Plus, ChevronRight } from 'lucide-react'
+import { usePathname } from 'next/navigation'
+import Link from 'next/link'
+
+function getBreadcrumb(pathname: string) {
+  if (pathname === '/') return 'Dashboard'
+  if (pathname === '/analyze') return 'Nouvelle Analyse'
+  if (pathname === '/regulations') return 'Réglementations'
+  if (pathname === '/forecast') return 'Prévisions'
+  return pathname.split('/').pop() || 'Dashboard'
+}
 
 export default function Header() {
+  const pathname = usePathname()
+  const currentPage = getBreadcrumb(pathname)
+
   return (
-    <header className="sticky top-0 h-16 bg-white/80 backdrop-blur-md border-b border-border z-40 flex items-center justify-between px-8 ml-64">
-      {/* Search Bar */}
-      <div className="flex-1 max-w-md relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-        <input 
-          type="text" 
-          placeholder="Rechercher un marché, un code HS..." 
-          className="w-full pl-10 pr-4 py-2 bg-secondary/50 border-none rounded-full text-sm focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-muted"
-        />
+    <header className="fixed top-0 right-0 left-60 h-16 bg-surface/80 backdrop-blur-md border-b border-border z-40 flex items-center justify-between px-6 transition-all duration-200">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-text-muted font-medium">
+        <span>MaroTrade Intelligence</span>
+        <ChevronRight className="w-4 h-4 text-border" />
+        <span className="text-text-primary font-semibold">{currentPage}</span>
       </div>
 
-      {/* Right Side */}
+      {/* Actions */}
       <div className="flex items-center gap-4">
-        <button className="p-2 text-text-secondary hover:bg-secondary rounded-full transition-colors relative">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-2 right-2.5 w-2 h-2 bg-danger rounded-full border-2 border-white" />
-        </button>
-        
-        <div className="h-8 w-px bg-border mx-1" />
-        
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-semibold text-text-primary leading-none">Exportateur Maroc</p>
-            <p className="text-[11px] text-text-muted mt-1">PME Artisanat</p>
+        {/* Global Search */}
+        <div className="relative hidden md:block w-64 group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted group-focus-within:text-primary-600 transition-colors" />
+          <input
+            type="text"
+            placeholder="Rechercher..."
+            className="w-full bg-background border border-border rounded-md pl-9 pr-12 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition-all"
+          />
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
+            <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded bg-surface border border-border px-1.5 font-mono text-[10px] font-medium text-text-muted">
+              <span>⌘</span>K
+            </kbd>
           </div>
-          <button className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center border border-border hover:border-primary/30 transition-colors">
-            <User className="w-5 h-5 text-text-secondary" />
-          </button>
         </div>
 
-        <button className="hidden md:block px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 transition-colors shadow-sm">
-          Nouvelle Analyse
+        {/* Notifications */}
+        <button className="relative p-2 text-text-muted hover:text-text-primary hover:bg-background rounded-md transition-all group">
+          <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-danger-600 rounded-full border border-surface shadow-sm" />
         </button>
+
+        {/* Primary CTA Outline */}
+        <Link
+          href="/analyze"
+          className="flex items-center gap-2 px-3 py-1.5 border border-primary-600 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-md text-sm font-medium transition-colors active:scale-95"
+        >
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">Nouvelle analyse</span>
+        </Link>
       </div>
     </header>
   )

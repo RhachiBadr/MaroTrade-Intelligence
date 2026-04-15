@@ -1,19 +1,20 @@
-import { cn } from '@/lib/utils'
+import Image from 'next/image'
 
-interface Props {
-  flag: string
-  name: string
-  code?: string
-  className?: string
-}
-
-/** Country flag emoji + name */
-export function CountryFlag({ flag, name, code, className }: Props) {
+export function CountryFlag({ code, name }: { code: string, name: string }) {
+  const lowerCode = code.toLowerCase()
   return (
-    <span className={cn('inline-flex items-center gap-2', className)}>
-      <span className="text-xl">{flag}</span>
-      <span className="font-medium">{name}</span>
-      {code && <span className="text-xs text-gray-400">({code})</span>}
-    </span>
+    <div className="w-6 h-4 relative shrink-0 overflow-hidden border border-border/50 rounded-sm bg-secondary">
+      {code ? (
+        <Image
+          src={`https://flagcdn.com/w20/${lowerCode}.png`}
+          alt={name}
+          fill
+          className="object-cover"
+          unoptimized
+        />
+      ) : (
+        <span className="text-[8px] font-bold text-text-muted absolute inset-0 flex items-center justify-center">{code || '??'}</span>
+      )}
+    </div>
   )
 }

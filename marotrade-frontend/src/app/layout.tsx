@@ -9,24 +9,36 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
   title: 'MaroTrade Intelligence — Export Analytics',
-  description: "Identifiez vos meilleurs marchés d'export en 60 secondes. Scoring IA · Veille réglementaire · Prévisions 2026.",
+  description: "B2B SaaS platform for Export Intelligence.",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans bg-background text-text-primary antialiased`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark')
+                } else {
+                  document.documentElement.classList.remove('dark')
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+      </head>
+      <body className={`${inter.variable} font-sans bg-background text-text-primary antialiased selection:bg-primary-500 selection:text-white transition-colors duration-200`}>
         <Providers>
           <div className="flex min-h-screen">
             <Sidebar />
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-w-0 transition-all duration-200 ml-60 lg:ml-60">
               <Header />
-              <main className="flex-1 p-8 ml-64">
+              <main className="flex-1 p-6 lg:p-8 mt-16 animate-slide-down">
                 {children}
               </main>
-              <footer className="ml-64 py-8 text-center text-sm text-text-muted border-t border-border mt-auto">
-                MaroTrade Intelligence · Made in 🇲🇦 · {new Date().getFullYear()}
-              </footer>
             </div>
           </div>
         </Providers>
