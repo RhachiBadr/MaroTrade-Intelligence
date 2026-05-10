@@ -7,16 +7,22 @@ from pydantic import BaseModel
 
 # Import modules from the current backend
 try:
-    from scoring_engine import MarketScoringEngine
+    from services import MarketScoringEngine, RegulatoryWatchEngine
 except ImportError:
-    print("ATTENTION: scoring_engine.py introuvable ou erreur d'importation (e.g. xgboost manquant).")
-    MarketScoringEngine = None
-
-try:
-    from regulatory_watch import RegulatoryWatchEngine
-except ImportError:
-    print("ATTENTION: regulatory_watch.py introuvable ou erreur d'importation.")
-    RegulatoryWatchEngine = None
+    try:
+        from services.scoring import MarketScoringEngine
+        from services.watch import RegulatoryWatchEngine
+    except ImportError:
+        try:
+            from scoring_engine import MarketScoringEngine
+        except ImportError:
+            print("ATTENTION: scoring_engine.py introuvable ou erreur d'importation (e.g. xgboost manquant).")
+            MarketScoringEngine = None
+        try:
+            from regulatory_watch import RegulatoryWatchEngine
+        except ImportError:
+            print("ATTENTION: regulatory_watch.py introuvable ou erreur d'importation.")
+            RegulatoryWatchEngine = None
 
 app = FastAPI(
     title="MaroTrade Intelligence API",
