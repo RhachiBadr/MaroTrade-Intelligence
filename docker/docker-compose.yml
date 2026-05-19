@@ -1,0 +1,167 @@
+# ███████████████████████████████████████████████████████████████
+# MaroTrade Intelligence — Docker Compose PRODUCTION
+# ███████████████████████████████████████████████████████████████
+# Usage: docker-compose up -d
+
+version: '3.8'
+
+networks:
+  marotrade:
+    driver: bridge
+
+services:
+  # 🔴 REDIS — Cache distribuée
+  redis:
+    image: redis:7-alpine
+    container_name: marotrade-redis
+    hostname: redis
+    networks:
+      - marotrade
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --loglevel notice --maxmemory 512mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "com.marotrade.service=redis"
+      - "com.marotrade.version=2.0"
+      - "com.marotrade.environment=production"
+    environment:
+      - TZ=Africa/Casablanca
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: 3
+
+  # 🐘 POSTGRESQL — Données
+  postgres:
+    image: postgres:15-alpine
+    container_name: marotrade-postgres
+    hostname: postgres
+    networks:
+      - marotrade
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: marotrade_db
+      TZ: Africa/Casablanca
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    command: ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=256MB"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d marotrade_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "com.marotrade.service=database"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: 3
+
+  # 🤖 MAROTRADE API & DASHBOARDS — Application principale
+  marotrade:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: marotrade-intelligence
+    hostname: marotrade
+    networks:
+      - marotrade
+    env_file:
+      - docker/.env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/marotrade_db?schema=public
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8501:8501"        # Streamlit
+      - "8000:8000"        # FastAPI (futur)
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "com.marotrade.service=api"
+      - "com.marotrade.version=2.0"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: 5
+
+  # 🎨 PGADMIN — Gestion base de données
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: marotrade-pgadmin
+    hostname: pgadmin
+    networks:
+      - marotrade
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@marotrade.ma
+      PGADMIN_DEFAULT_PASSWORD: adminpassword
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - "com.marotrade.service=admin"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: 2
+
+  # 🌐 FRONTEND (Next.js) — Interface utilisateur
+  frontend:
+    image: node:20-alpine
+    container_name: marotrade-frontend
+    hostname: frontend
+    networks:
+      - marotrade
+    working_dir: /app
+    env_file: docker/.env
+    volumes:
+      - ./marotrade-frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    command: sh -c "npm ci && npm run build && npm run start"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      marotrade:
+        condition: service_started
+    labels:
+      - "com.marotrade.service=frontend"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

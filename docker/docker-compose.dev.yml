@@ -1,0 +1,90 @@
+# ███████████████████████████████████████████████████████████████
+# MaroTrade Intelligence — Docker Compose DEV (Hot-reload)
+# ███████████████████████████████████████████████████████████████
+# Usage: docker-compose -f docker-compose.dev.yml up -d
+
+version: '3.8'
+
+networks:
+  marotrade-dev:
+    driver: bridge
+
+services:
+  # 🔴 REDIS — Cache haute performance
+  redis:
+    image: redis:7-alpine
+    container_name: marotrade-redis-dev
+    hostname: redis
+    networks:
+      - marotrade-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    command: redis-server --appendonly yes --loglevel notice
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "com.marotrade.service=redis"
+      - "com.marotrade.version=2.0"
+    environment:
+      - TZ=Africa/Casablanca
+    restart: unless-stopped
+
+  # 🐘 POSTGRESQL — Base de données principale
+  postgres:
+    image: postgres:15-alpine
+    container_name: marotrade-postgres-dev
+    hostname: postgres
+    networks:
+      - marotrade-dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: marotrade_db
+      TZ: Africa/Casablanca
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    command: ["postgres", "-c", "max_connections=200"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d marotrade_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "com.marotrade.service=database"
+    restart: unless-stopped
+
+  # 🎨 PGADMIN — Interface web PostgreSQL
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: marotrade-pgadmin-dev
+    networks:
+      - marotrade-dev
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@marotrade.ma
+      PGADMIN_DEFAULT_PASSWORD: adminpassword
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - "com.marotrade.service=admin"
+    restart: unless-stopped
+
+volumes:
+  postgres_data_dev:
+    driver: local
+  redis_data_dev:
+    driver: local
+
+# Commandes utiles:
+# docker-compose -f docker-compose.dev.yml up -d     — Démarrer
+# docker-compose -f docker-compose.dev.yml down -v   — Arrêter (supprimer volumes)
+# docker-compose -f docker-compose.dev.yml logs -f   — Voir logs

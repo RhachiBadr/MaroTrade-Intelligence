@@ -1,7 +1,9 @@
-import type { Config } from 'tailwindcss'
+import type { Config } from 'tailwindcss';
 
+// Tailwind CSS v4 configuration
+// Note: In v4, most configuration is done via CSS variables in your global CSS
+// This config file is kept for TypeScript type support and legacy compatibility
 const config: Config = {
-  darkMode: 'class',
   content: [
     './src/**/*.{js,ts,jsx,tsx,mdx}',
   ],
@@ -10,6 +12,7 @@ const config: Config = {
       colors: {
         background: 'var(--color-background)',
         surface: 'var(--color-surface)',
+        'surface-elevated': 'var(--color-surface-elevated)',
         border: 'var(--color-border)',
         primary: {
           DEFAULT: 'var(--color-primary)',
@@ -43,6 +46,13 @@ const config: Config = {
           50: 'var(--color-warning-50)',
           500: 'var(--color-warning-500)',
           600: 'var(--color-warning-600)',
+        },
+        secondary: {
+          DEFAULT: 'var(--color-secondary)',
+        },
+        success: {
+          DEFAULT: 'var(--color-success)',
+          muted: 'var(--color-success-muted)',
         },
         text: {
           primary: 'var(--color-text-primary)',
@@ -82,6 +92,6 @@ const config: Config = {
     },
   },
   plugins: [],
-}
+};
 
-export default config
+export default config;

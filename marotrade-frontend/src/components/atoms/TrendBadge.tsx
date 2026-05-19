@@ -12,7 +12,7 @@ export function TrendBadge({ value, isPositive }: TrendBadgeProps) {
     return (
         <span className={cn(
             'inline-flex items-center gap-1 px-1.5 py-0.5 rounded textxs font-semibold',
-            isUp ? 'text-success bg-success/10' : 'text-danger-600 bg-danger-50'
+            isUp ? 'bg-success-muted text-success' : 'bg-danger-50 text-danger-600'
         )}>
             {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
             {Math.abs(value)}%

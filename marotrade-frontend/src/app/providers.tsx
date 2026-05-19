@@ -17,7 +17,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     defaultOptions: { queries: { staleTime: 5 * 60_000, retry: 2 } },
   }))
 
-  const [theme, setThemeState] = useState<Theme>('light')
+  const [theme, setThemeState] = useState<Theme>('dark')
   const [mounted, setMounted] = useState(false)
 
   // 1. Initial mounting and theme recovery
@@ -34,9 +34,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // 2. Continuous synchronization with the DOM
   useEffect(() => {
     if (!mounted) return
-    
-    console.log('Switching to theme:', theme)
-    
+
     if (theme === 'dark') {
       document.documentElement.classList.add('dark')
     } else {

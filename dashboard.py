@@ -10,7 +10,8 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
-from scoring_engine import MarketScoringEngine, WEIGHTS_DEFAULT as WEIGHTS
+from services.scoring import MarketScoringEngine
+from services.scoring.scoring_engine import WEIGHTS_DEFAULT as WEIGHTS
 
 # ═══════════════════════════════════════════════════════════════
 # CONFIG PAGE
@@ -53,9 +54,10 @@ DIMENSIONS = [
     "Stabilité & risque pays",
     "Diaspora marocaine (MRE)",
     "Logistique & transport",
+    "Tendance & demande",  # Nouvelle dimension v2.0
 ]
 
-COLORS = ["#1D9E75", "#378ADD", "#BA7517", "#534AB7", "#D85A30", "#D4537E"]
+COLORS = ["#1D9E75", "#378ADD", "#BA7517", "#534AB7", "#D85A30", "#D4537E", "#8B5CF6"]
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -190,11 +192,11 @@ def score_color(s: float) -> str:
 
 st.markdown('<div class="brand">MaroTrade Intelligence</div>', unsafe_allow_html=True)
 st.title("Marchés prioritaires à l'export")
-st.caption("Scoring pondéré × XGBoost × SHAP — 6 dimensions · 15 indicateurs · 20+ pays")
+st.caption("Scoring pondéré × XGBoost × SHAP — 7 dimensions · 16 indicateurs · 20+ pays")
 
 if not run_btn:
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Dimensions", "6", help="Marché · Accord · Business · Stabilité · Diaspora · Logistique")
+    col1.metric("Dimensions", "7", help="Marché · Accord · Business · Stabilité · Diaspora · Logistique · Tendance")
     col2.metric("Indicateurs", "15", help="UN Comtrade · World Bank WGI · OCDE · MRE · LPI")
     col3.metric("Modèles", "2", help="Scoring pondéré (60%) + XGBoost (40%)")
     col4.metric("Pays couverts", "20+")

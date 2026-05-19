@@ -32,6 +32,7 @@ from data_sources import (
     get_diaspora, get_logistique, get_trends, get_market_context,
     ACCORDS_MAROC, PAYS_NOM, fetch_itc_price,
 )
+from external_api_manager import api_manager
 from dynamic_growth import enrich_with_growth, interpret_growth, growth_label
 
 logger = logging.getLogger("marotrade.scoring")

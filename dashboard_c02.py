@@ -8,7 +8,8 @@ import os
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from regulatory_watch import RegulatoryWatchEngine, LEVEL_CRITICAL, LEVEL_WARNING, LEVEL_INFO
+from services.watch import RegulatoryWatchEngine, LEVEL_CRITICAL, LEVEL_WARNING, LEVEL_INFO
+from services.nlp import NLPAnalyzer
 
 st.set_page_config(
     page_title="Veille Réglementaire — MaroTrade",
@@ -81,28 +82,13 @@ with st.sidebar:
 
     st.divider()
 
-    # ── Option LLM ───────────────────────────────────────────
-    st.caption("Intelligence artificielle")
-    use_llm = st.toggle(
-        "Analyse Claude 3.5 Haiku",
-        value=bool(os.getenv("ANTHROPIC_API_KEY")),
-        help="Active l'analyse sémantique des alertes via Claude 3.5 Haiku. Nécessite une clé API Anthropic.",
+    # ── Option IA locale ───────────────────────────────────────
+    st.caption("Intelligence artificielle locale")
+    use_llm = st.checkbox(
+        "Activer l'analyse IA locale",
+        value=True,
+        help="Utilise le service NLP open-source pour enrichir les alertes sans API externe.",
     )
-
-    if use_llm:
-        api_key_input = st.text_input(
-            "Clé API Anthropic",
-            value=os.getenv("ANTHROPIC_API_KEY", ""),
-            type="password",
-            help="console.anthropic.com → API Keys",
-        )
-        if api_key_input:
-            os.environ["ANTHROPIC_API_KEY"] = api_key_input
-        if not os.getenv("ANTHROPIC_API_KEY"):
-            st.warning("Clé API manquante — mode basique activé")
-            use_llm = False
-        else:
-            st.success("Claude 3.5 Haiku actif")
 
     st.divider()
     niveau_filter = st.multiselect(
@@ -141,26 +127,27 @@ with st.spinner("Collecte des sources réglementaires..."):
     engine = RegulatoryWatchEngine()
     alerts = engine.run(hs_code, product_name, target_countries)
 
-# Upgrade LLM si activé
-llm_stats = None
+# Enrichissement IA locale si activé
 brief_text = None
-if use_llm and os.getenv("ANTHROPIC_API_KEY"):
-    with st.spinner("🤖 Analyse Claude 3.5 Haiku en cours..."):
-        try:
-            from llm_regulatory_analyzer import LLMRegulatoryAnalyzer, upgrade_regulatory_watch
-            alerts = upgrade_regulatory_watch(
-                alerts, hs_code, target_countries,
-                api_key=os.getenv("ANTHROPIC_API_KEY"),
-            )
-            # Générer le brief exécutif
-            analyzer = LLMRegulatoryAnalyzer()
-            if alerts and selected_pays:
-                brief_text = analyzer.generate_export_brief(
-                    alerts, product_name, hs_code, selected_pays[0]
-                )
-            llm_stats = analyzer.stats
-        except Exception as e:
-            st.warning(f"Analyse LLM échouée : {e} — mode basique utilisé")
+if use_llm:
+    with st.spinner("Analyse IA locale en cours..."):
+        analyzer = NLPAnalyzer(use_models=False)
+        enriched_alerts = []
+        for alert in alerts:
+            source_text = alert.get("resume") or alert.get("titre") or ""
+            analysis = analyzer.analyze(source_text, hs_code, target_countries)
+            alert = {
+                **alert,
+                "titre": f"{analysis.titre} — {alert.get('titre', '')}" if alert.get('titre') else analysis.titre,
+                "resume": analysis.resume,
+                "action": analysis.action_requise,
+                "score_impact": analysis.impact_score,
+                "llm_enhanced": True,
+                "llm_analysis": analysis,
+            }
+            enriched_alerts.append(alert)
+        alerts = enriched_alerts
+        brief_text = "Analyse IA locale appliquée aux alertes réglementaires."
 
 # Filtrer par niveau
 engine_obj = engine

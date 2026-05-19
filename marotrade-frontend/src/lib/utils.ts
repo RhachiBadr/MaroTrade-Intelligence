@@ -14,7 +14,7 @@ export function formatCurrency(value: number, currency = 'USD'): string {
 }
 
 export function scoreColor(score: number): string {
-  if (score >= 70) return 'bg-success/10 text-success border border-success/20'
+  if (score >= 70) return 'border border-border bg-success-muted text-success'
   if (score >= 50) return 'bg-warning/10 text-warning border border-warning/20'
   return 'bg-danger/10 text-danger border border-danger/20'
 }

@@ -16,17 +16,19 @@ interface Props {
 export function MarketCard({ result, expertMode = false, className }: Props) {
   const { country, score_final, rank, accord_info, top_atouts, top_risques, dimensions, forecast } = result
   return (
-    <div className={cn('rounded-3xl border border-border bg-white shadow-sm hover:shadow-xl hover:border-primary/20 transition-all duration-300 p-6 flex flex-col', className)}>
+    <div className={cn('flex flex-col rounded-xl border border-border bg-surface p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6', className)}>
       {/* Header */}
-      <div className="flex items-start justify-between mb-5">
-        <div className="flex items-center gap-4">
-          <div className="text-4xl bg-secondary/50 p-2 rounded-2xl">{country.flag}</div>
-          <div>
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-[10px] font-black text-text-muted uppercase tracking-widest bg-secondary px-1.5 py-0.5 rounded">Rank #{rank}</span>
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex shrink-0 rounded-lg bg-secondary/80 p-2 text-3xl">{country.flag}</div>
+          <div className="min-w-0">
+            <div className="mb-0.5">
+              <span className="inline-block rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                Rang {rank}
+              </span>
             </div>
-            <h3 className="font-bold text-lg text-text-primary tracking-tight leading-tight">{country.name}</h3>
-            <p className="text-xs font-bold text-text-muted mt-0.5">{accord_info.accord}</p>
+            <h3 className="truncate text-base font-semibold tracking-tight text-text-primary">{country.name}</h3>
+            <p className="mt-0.5 truncate text-xs font-medium text-text-muted">{accord_info.accord}</p>
           </div>
         </div>
         <ScoreBadge score={score_final} size="lg" />
@@ -34,7 +36,7 @@ export function MarketCard({ result, expertMode = false, className }: Props) {
 
       {/* Forecast mini */}
       {forecast && (
-        <div className="flex items-center gap-3 mb-5 px-4 py-3 rounded-2xl bg-secondary/50 border border-border/50">
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-border bg-secondary/50 px-3 py-2.5">
           <TrendArrow cagr={forecast.cagr_prevu} />
           <span className="text-xs font-bold text-text-secondary leading-tight">
             Tendance 2026 : <span className="text-text-primary">{(forecast.valeur_2026 / 1e6).toFixed(1)}M USD</span>
@@ -44,8 +46,8 @@ export function MarketCard({ result, expertMode = false, className }: Props) {
 
       {/* Dimensions (expert mode) */}
       {expertMode && (
-        <div className="space-y-3 mb-5 bg-secondary/30 p-4 rounded-2xl">
-          <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Détails du Score</p>
+        <div className="mb-4 space-y-2 rounded-lg border border-border bg-secondary/40 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Score — détail</p>
           {dimensions.slice(0, 3).map((d) => (
             <DimensionBar key={d.nom} nom={d.nom} score={d.score} />
           ))}
@@ -57,8 +59,8 @@ export function MarketCard({ result, expertMode = false, className }: Props) {
         {top_atouts.length > 0 && (
           <div className="space-y-1.5 mb-4">
             {top_atouts.slice(0, 2).map((a, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs font-bold text-success">
-                <div className="w-1.5 h-1.5 rounded-full bg-success" />
+              <div key={i} className="flex items-center gap-2 text-xs font-medium text-success">
+                <div className="h-1 w-1 shrink-0 rounded-full bg-success" />
                 {a}
               </div>
             ))}
@@ -69,8 +71,8 @@ export function MarketCard({ result, expertMode = false, className }: Props) {
         {top_risques.length > 0 && (
           <div className="space-y-1.5 mb-6">
             {top_risques.slice(0, 1).map((r, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs font-bold text-warning">
-                <div className="w-1.5 h-1.5 rounded-full bg-warning" />
+              <div key={i} className="flex items-center gap-2 text-xs font-medium text-warning-600">
+                <div className="h-1 w-1 shrink-0 rounded-full bg-warning-500" />
                 {r}
               </div>
             ))}
@@ -80,7 +82,7 @@ export function MarketCard({ result, expertMode = false, className }: Props) {
 
       <Link
         href={`/results/${country.code.toLowerCase()}`}
-        className="w-full py-3 bg-secondary hover:bg-primary hover:text-white text-text-primary text-xs font-bold rounded-xl transition-all text-center"
+        className="mt-auto block w-full rounded-lg border border-border bg-secondary py-2.5 text-center text-xs font-semibold text-text-primary transition-colors hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-primary-950/30"
       >
         Analyser le marché pays →
       </Link>

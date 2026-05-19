@@ -3,100 +3,122 @@
 import { useAnalysisStore } from '@/store/analysis'
 import { useRouter } from 'next/navigation'
 import { Clock, Search, Trash2, ArrowRight } from 'lucide-react'
+import { PageContainer, PageHeader } from '@/components/ui/page-shell'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 export default function HistoryPage() {
-    const { history, clearHistory, deleteHistoryItem, setParams, setResults } = useAnalysisStore()
-    const router = useRouter()
+  const { history, clearHistory, deleteHistoryItem, setParams, setResults } = useAnalysisStore()
+  const router = useRouter()
 
-    const handleReplay = (item: typeof history[0]) => {
-        setParams(item.params)
-        setResults(item.results)
-        router.push('/results')
-    }
+  function handleReplay(item: (typeof history)[0]) {
+    setParams(item.params)
+    setResults(item.results)
+    router.push('/results')
+  }
 
-    return (
-        <div className="max-w-5xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-text-primary tracking-tight">Historique d'analyses</h1>
-                    <p className="text-sm text-text-muted mt-1">Consultez, comparez et reprenez vos rapports de marché précédents.</p>
-                </div>
-                {history.length > 0 && (
-                    <button
-                        onClick={clearHistory}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-danger-600 bg-danger-50 hover:bg-danger-100 rounded-md transition-colors"
-                    >
-                        <Trash2 className="w-4 h-4" />
-                        Tout effacer
-                    </button>
-                )}
-            </div>
+  return (
+    <PageContainer className="max-w-5xl space-y-6 py-2">
+      <PageHeader
+        title="Historique des analyses"
+        description="Consultez et rouvrez vos rapports de marché enregistrés sur cet appareil."
+        actions={
+          history.length > 0 ? (
+            <Button type="button" variant="destructive" size="sm" onClick={clearHistory} className="gap-2">
+              <Trash2 className="h-4 w-4" />
+              Tout effacer
+            </Button>
+          ) : null
+        }
+      />
 
-            {history.length === 0 ? (
-                <div className="bg-surface border border-border rounded-lg p-16 text-center space-y-4">
-                    <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center mx-auto">
-                        <Clock className="w-8 h-8 text-text-muted" />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-text-primary">Aucun historique</h3>
-                        <p className="text-sm text-text-secondary mt-1">Vous n'avez pas encore effectué d'analyse de marché.</p>
-                    </div>
-                    <button
-                        onClick={() => router.push('/analyze')}
-                        className="mt-6 inline-flex items-center gap-2 px-6 py-2 bg-primary-600 text-white font-semibold rounded-md hover:bg-primary-700 transition-colors"
-                    >
-                        <Search className="w-4 h-4" /> Nouvelle analyse
-                    </button>
-                </div>
-            ) : (
-                <div className="bg-surface border border-border rounded-lg shadow-sm overflow-hidden">
-                    <table className="w-full text-left text-sm whitespace-nowrap">
-                        <thead className="bg-background text-xs text-text-muted font-semibold uppercase tracking-wider border-b border-border">
-                            <tr>
-                                <th className="px-6 py-4">Date</th>
-                                <th className="px-6 py-4">Produit</th>
-                                <th className="px-6 py-4">HS Code</th>
-                                <th className="px-6 py-4">Périmètre</th>
-                                <th className="px-6 py-4">Meilleur Score</th>
-                                <th className="px-6 py-4 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                            {history.map((item) => (
-                                <tr key={item.id} className="hover:bg-background/50 transition-colors group">
-                                    <td className="px-6 py-4 text-text-secondary font-medium">
-                                        {new Date(item.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                    </td>
-                                    <td className="px-6 py-4 font-bold text-text-primary">{item.params.product_name}</td>
-                                    <td className="px-6 py-4 font-mono text-text-muted">{item.params.hs_code}</td>
-                                    <td className="px-6 py-4 text-text-secondary">Top {item.params.top_n === 50 ? 'Général' : item.params.top_n}</td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${item.topScore >= 80 ? 'bg-success/10 text-success' : item.topScore >= 60 ? 'bg-warning-100 text-warning-600' : 'bg-danger-50 text-danger-600'
-                                            }`}>
-                                            {item.topScore}%
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                                        <button
-                                            onClick={() => handleReplay(item)}
-                                            className="px-3 py-1.5 text-xs font-bold text-primary-600 bg-primary-50 rounded hover:bg-primary-100 transition-colors flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
-                                        >
-                                            Voir rapport <ArrowRight className="w-3 h-3" />
-                                        </button>
-                                        <button
-                                            onClick={() => deleteHistoryItem(item.id)}
-                                            className="p-1.5 text-text-muted hover:text-danger-600 rounded transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
-                                            title="Supprimer"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-        </div>
-    )
+      {history.length === 0 ? (
+        <Card className="py-16 text-center shadow-none">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
+            <Clock className="h-8 w-8 text-text-muted" />
+          </div>
+          <h3 className="text-lg font-semibold text-text-primary">Aucun historique</h3>
+          <p className="mx-auto mt-1 max-w-md text-sm text-text-secondary">
+            Vous n&apos;avez pas encore effectué d&apos;analyse de marché.
+          </p>
+          <Button type="button" className="mt-6 gap-2" onClick={() => router.push('/analyze')}>
+            <Search className="h-4 w-4" />
+            Nouvelle analyse
+          </Button>
+        </Card>
+      ) : (
+        <Card className="overflow-hidden shadow-none">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b border-border bg-secondary/50 text-xs font-medium uppercase tracking-wide text-text-muted">
+                <tr>
+                  <th className="px-4 py-3 sm:px-6">Date</th>
+                  <th className="px-4 py-3 sm:px-6">Produit</th>
+                  <th className="px-4 py-3 sm:px-6">HS</th>
+                  <th className="px-4 py-3 sm:px-6">Périmètre</th>
+                  <th className="px-4 py-3 sm:px-6">Meilleur score</th>
+                  <th className="px-4 py-3 text-right sm:px-6">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {history.map((item) => (
+                  <tr key={item.id} className="group hover:bg-secondary/40">
+                    <td className="px-4 py-3.5 text-text-secondary sm:px-6">
+                      {new Date(item.date).toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </td>
+                    <td className="px-4 py-3.5 font-medium text-text-primary sm:px-6">
+                      {item.params.product_name}
+                    </td>
+                    <td className="px-4 py-3.5 font-mono text-text-muted sm:px-6">{item.params.hs_code}</td>
+                    <td className="px-4 py-3.5 text-text-secondary sm:px-6">
+                      Top {item.params.top_n === 50 ? 'général' : item.params.top_n}
+                    </td>
+                    <td className="px-4 py-3.5 sm:px-6">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          item.topScore >= 80
+                            ? 'bg-success-muted text-success'
+                            : item.topScore >= 60
+                              ? 'bg-warning-50 text-warning-600'
+                              : 'bg-danger-50 text-danger-600'
+                        }`}
+                      >
+                        {item.topScore}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-right sm:px-6">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleReplay(item)}
+                          className="gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                        >
+                          Voir <ArrowRight className="h-3 w-3" />
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => deleteHistoryItem(item.id)}
+                          className="rounded-md p-2 text-text-muted transition-colors hover:bg-danger-50 hover:text-danger-600"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+    </PageContainer>
+  )
 }

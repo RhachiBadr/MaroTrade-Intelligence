@@ -1,4 +1,5 @@
 'use client'
+
 import { useState } from 'react'
 import Link from 'next/link'
 import { useAnalysisStore } from '@/store/analysis'
@@ -8,84 +9,116 @@ import { ScoreBadge } from '@/components/atoms/ScoreBadge'
 import { MOCK_RESULTS } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { ShieldCheck, Globe } from 'lucide-react'
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ResponsiveContainer,
-} from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ResponsiveContainer } from 'recharts'
+import { PageContainer } from '@/components/ui/page-shell'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
-const LEVEL_COLORS = ['#1D9E75','#27BA87','#BA7517','#E24B4A','#991B1B']
+const LEVEL_COLORS = ['#0d9488', '#14b8a6', '#d97706', '#ea580c', '#dc2626']
 
 export default function ResultsPage() {
   const { results: storeResults, params, expertMode, toggleExpertMode } = useAnalysisStore()
   const results = storeResults.length ? storeResults : MOCK_RESULTS
   const productName = params?.product_name ?? "Huile d'argan bio"
-  const hsCode      = params?.hs_code      ?? '151590'
+  const hsCode = params?.hs_code ?? '151590'
 
-  const [tab, setTab] = useState<'cards'|'radar'|'table'>('cards')
+  const [tab, setTab] = useState<'cards' | 'radar' | 'table'>('cards')
 
-  const barData = results.map((r) => ({ name: `${r.country.flag} ${r.country.name}`, score: r.score_final }))
+  const barData = results.map((r) => ({
+    name: `${r.country.flag} ${r.country.name}`,
+    score: r.score_final,
+  }))
+
+  const tabs = [
+    { id: 'cards' as const, label: 'Fiches' },
+    { id: 'radar' as const, label: 'Radar' },
+    { id: 'table' as const, label: 'Tableau' },
+  ]
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-10">
-        <div>
-          <nav className="flex items-center gap-2 text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
-            <Link href="/" className="hover:text-primary transition-colors">Accueil</Link>
-            <span className="opacity-30">/</span>
-            <Link href="/analyze" className="hover:text-primary transition-colors">Analyse</Link>
-            <span className="opacity-30">/</span>
+    <PageContainer className="space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <nav className="mb-2 flex flex-wrap items-center gap-1.5 text-xs font-medium text-text-muted">
+            <Link href="/dashboard" className="hover:text-primary-600">
+              Tableau de bord
+            </Link>
+            <span className="text-text-muted/50">/</span>
+            <Link href="/analyze" className="hover:text-primary-600">
+              Analyse
+            </Link>
+            <span className="text-text-muted/50">/</span>
             <span className="text-text-secondary">Résultats</span>
           </nav>
-          <h1 className="text-3xl font-extrabold text-text-primary tracking-tight">
-            {results.length} marchés pour <span className="text-primary">{productName}</span>
-            <span className="ml-3 px-2 py-0.5 bg-secondary text-text-muted text-xs font-mono rounded tracking-widest uppercase">HS {hsCode}</span>
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
+            {results.length} marchés —{' '}
+            <span className="text-primary-600">{productName}</span>
           </h1>
+          <p className="mt-1 font-mono text-xs text-text-muted">HS {hsCode}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={toggleExpertMode}
-            className={cn('text-sm font-bold px-4 py-2 rounded-xl border transition-all', expertMode ? 'bg-text-primary text-white border-text-primary' : 'bg-white border-border text-text-secondary hover:border-primary/30')}>
-            {expertMode ? '🔍 Mode Expert' : '📊 Mode Simplifié'}
-          </button>
-          <Link href="/regulations" className="text-sm font-bold px-4 py-2 rounded-xl bg-white border border-border text-text-secondary hover:border-primary/30 transition-all flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4" />
-            Réglementations
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant={expertMode ? 'default' : 'secondary'}
+            size="sm"
+            onClick={toggleExpertMode}
+          >
+            {expertMode ? 'Mode expert' : 'Mode simple'}
+          </Button>
+          <Link
+            href="/regulations"
+            className="inline-flex h-8 items-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text-secondary transition-colors hover:bg-secondary"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Réglementation
           </Link>
         </div>
       </div>
 
-      {/* Top 5 Summary Cards (Horizontal Scroll on mobile) */}
-      <div className="flex gap-4 mb-10 overflow-x-auto pb-4 -mx-1 px-1 no-scrollbar">
+      <div className="-mx-1 flex gap-3 overflow-x-auto pb-1">
         {results.map((r) => (
-          <div key={r.country.code} className="min-w-[140px] flex-1 bg-white rounded-2xl border border-border p-4 text-center hover:border-primary/30 transition-all group">
-            <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">{r.country.flag}</div>
-            <p className="text-xs font-bold text-text-primary truncate mb-1">{r.country.name}</p>
-            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3">Rang #{r.rank}</p>
-            <div className="flex justify-center">
-              <ScoreBadge score={r.score_final} size="sm" />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Modern Tabs (Notion style) */}
-      <div className="flex gap-6 border-b border-border mb-8">
-        {(['cards','radar','table'] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={cn(
-              'pb-3 text-sm font-bold transition-all relative', 
-              tab === t 
-                ? 'text-primary after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-0.5 after:bg-primary' 
-                : 'text-text-muted hover:text-text-secondary'
-            )}
+          <Card
+            key={r.country.code}
+            className="min-w-[132px] flex-1 shrink-0 border-primary-100 shadow-none transition-colors hover:border-primary-200 dark:border-primary-900"
           >
-            {{ cards: 'Fiches détaillées', radar: 'Comparaison 6D', table: 'Vue Table' }[t]}
-          </button>
+            <CardContent className="p-4 text-center">
+              <div className="mb-2 text-2xl">{r.country.flag}</div>
+              <p className="truncate text-xs font-semibold text-text-primary">{r.country.name}</p>
+              <p className="mb-3 text-[10px] font-medium uppercase tracking-wide text-text-muted">
+                Rang {r.rank}
+              </p>
+              <div className="flex justify-center">
+                <ScoreBadge score={r.score_final} size="sm" />
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      {/* Tab content */}
+      <div className="border-b border-border">
+        <div className="flex gap-1" role="tablist" aria-label="Vue des résultats">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                'relative px-4 py-2.5 text-sm font-medium transition-colors',
+                tab === t.id
+                  ? 'text-primary-600 after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:rounded-full after:bg-primary-600'
+                  : 'text-text-muted hover:text-text-secondary'
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {tab === 'cards' && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {results.map((r) => (
             <MarketCard key={r.country.code} result={r} expertMode={expertMode} />
           ))}
@@ -93,73 +126,108 @@ export default function ResultsPage() {
       )}
 
       {tab === 'radar' && (
-        <div className="bg-white rounded-[2rem] border border-border p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-bold text-text-primary">Analyse Comparative Multi-Dimensions</h2>
-            <div className="flex items-center gap-2 text-xs font-bold text-text-muted uppercase tracking-widest">
-              <Globe className="w-4 h-4" /> Top 5 Pays
+        <Card className="shadow-none">
+          <CardContent className="space-y-8 p-6 lg:p-8">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-lg font-semibold text-text-primary">Comparaison multi-dimensions</h2>
+              <p className="flex items-center gap-2 text-xs font-medium text-text-muted">
+                <Globe className="h-4 w-4" /> Top 5 pays
+              </p>
             </div>
-          </div>
-          <RadarComparison results={results.slice(0, 5)} />
-          
-          <div className="mt-12 pt-8 border-t border-border">
-            <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest mb-6">Score Global Pondéré</h3>
-            <div className="h-[250px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData} layout="vertical" margin={{ left: -10 }}>
-                  <XAxis type="number" domain={[0, 100]} hide />
-                  <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 12, fontWeight: 600, fill: '#475569' }} axisLine={false} tickLine={false} />
-                  <Tooltip cursor={{ fill: '#F1F5F9' }} formatter={(v) => [`${Number(v)}/100`, 'Score']} contentStyle={{ borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                  <Bar dataKey="score" radius={[0, 8, 8, 0]} barSize={24}>
-                    {barData.map((_, i) => <Cell key={i} fill={LEVEL_COLORS[i] || '#2563EB'} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            <RadarComparison results={results.slice(0, 5)} />
+
+            <div className="border-t border-border pt-8">
+              <h3 className="mb-4 text-sm font-medium text-text-muted">Score global</h3>
+              <div className="h-[240px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barData} layout="vertical" margin={{ left: 8 }}>
+                    <XAxis type="number" domain={[0, 100]} hide />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={130}
+                      tick={{ fontSize: 11, fontWeight: 500, fill: 'var(--color-text-secondary)' }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      cursor={{ fill: 'var(--color-secondary)' }}
+                      formatter={(v) => [`${Number(v)}/100`, 'Score']}
+                      contentStyle={{
+                        borderRadius: '8px',
+                        border: '1px solid var(--color-border)',
+                        fontSize: '12px',
+                      }}
+                    />
+                    <Bar dataKey="score" radius={[0, 6, 6, 0]} barSize={20}>
+                      {barData.map((_, i) => (
+                        <Cell key={i} fill={LEVEL_COLORS[i] || '#2563eb'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {tab === 'table' && (
-        <div className="bg-white rounded-[2rem] border border-border overflow-hidden animate-in fade-in duration-500 shadow-sm">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-secondary/30 border-b border-border">
-                {['Rang','Marché','Score','Accord','Droits','Qualité Log.','Distance'].map((h) => (
-                  <th key={h} className="px-6 py-4 text-left text-[10px] font-black text-text-muted uppercase tracking-widest">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/50">
-              {results.map((r) => (
-                <tr key={r.country.code} className="hover:bg-secondary/30 transition-colors group">
-                  <td className="px-6 py-4 font-bold text-text-muted">#{r.rank}</td>
-                  <td className="px-6 py-4">
-                    <Link href={`/results/${r.country.code.toLowerCase()}`} className="flex items-center gap-3 group-hover:text-primary transition-colors">
-                      <span className="text-2xl">{r.country.flag}</span>
-                      <span className="font-bold text-text-primary group-hover:text-primary">{r.country.name}</span>
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4"><ScoreBadge score={r.score_final} size="sm" /></td>
-                  <td className="px-6 py-4 max-w-[180px]">
-                    <p className="text-xs font-bold text-text-secondary truncate">{r.accord_info.accord}</p>
-                  </td>
-                  <td className="px-6 py-4 font-mono font-bold text-text-primary">{r.accord_info.droits}%</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: `${(r.logistique.lpi/5)*100}%` }} />
-                      </div>
-                      <span className="text-xs font-bold text-text-muted">{r.logistique.lpi.toFixed(2)}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 font-mono text-xs font-bold text-text-muted">{r.logistique.distance_km.toLocaleString()} km</td>
+        <Card className="overflow-hidden shadow-none">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead>
+                <tr className="border-b border-border bg-secondary/50 text-left text-xs font-medium uppercase tracking-wide text-text-muted">
+                  {['Rang', 'Marché', 'Score', 'Accord', 'Droits', 'LPI', 'Distance'].map((h) => (
+                    <th key={h} className="px-4 py-3 lg:px-6">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {results.map((r) => (
+                  <tr key={r.country.code} className="hover:bg-secondary/40">
+                    <td className="px-4 py-3 font-medium text-text-muted lg:px-6">#{r.rank}</td>
+                    <td className="px-4 py-3 lg:px-6">
+                      <Link
+                        href={`/results/${r.country.code.toLowerCase()}`}
+                        className="flex items-center gap-2 font-semibold text-text-primary hover:text-primary-600"
+                      >
+                        <span className="text-lg">{r.country.flag}</span>
+                        {r.country.name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 lg:px-6">
+                      <ScoreBadge score={r.score_final} size="sm" />
+                    </td>
+                    <td className="max-w-[200px] px-4 py-3 lg:px-6">
+                      <p className="truncate text-xs font-medium text-text-secondary">{r.accord_info.accord}</p>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs font-semibold text-text-primary lg:px-6">
+                      {r.accord_info.droits}%
+                    </td>
+                    <td className="px-4 py-3 lg:px-6">
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-14 overflow-hidden rounded-full bg-secondary">
+                          <div
+                            className="h-full rounded-full bg-primary-600"
+                            style={{ width: `${(r.logistique.lpi / 5) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-text-muted">{r.logistique.lpi.toFixed(2)}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-text-muted lg:px-6">
+                      {r.logistique.distance_km.toLocaleString()} km
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
-    </div>
+    </PageContainer>
   )
 }

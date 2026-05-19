@@ -26,7 +26,7 @@ export function AlertCard({ alert, className }: Props) {
 
   return (
     <div className={cn(
-      'group rounded-2xl border-2 bg-surface p-6 transition-all duration-300 shadow-sm hover:shadow-xl',
+      'group rounded-xl border bg-surface p-6 shadow-sm transition-shadow hover:shadow-md',
       borderStyles[niveau],
       className
     )}>
@@ -43,7 +43,7 @@ export function AlertCard({ alert, className }: Props) {
 
         {llm_enhanced && (
           <div className="px-3 py-1 rounded-full bg-secondary text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
-            AI Enhanced
+            Enrichi IA
           </div>
         )}
 
@@ -91,10 +91,10 @@ export function AlertCard({ alert, className }: Props) {
       </div>
 
       {action && (
-        <div className="mt-6 flex items-start gap-3 p-4 bg-secondary/50 rounded-2xl border border-border/50">
+        <div className="mt-6 flex items-start gap-3 rounded-lg border border-border bg-secondary/50 p-4">
           <CheckCircle2 className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
           <div className="flex flex-col">
-            <span className="text-[10px] font-black text-success uppercase tracking-widest mb-1">Recommandation MaroTrade</span>
+            <span className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-success">Recommandation</span>
             <p className="text-xs font-bold text-text-secondary leading-normal">{action}</p>
           </div>
         </div>

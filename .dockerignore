@@ -1,6 +1,11 @@
+# ════════════════════════════════════════════════════════════════════════════
+# Docker Build Ignore — Réduit la taille du contexte Docker
+# ════════════════════════════════════════════════════════════════════════════
+
 # Git
 .git
 .gitignore
+.gitattributes
 
 # Python
 __pycache__/
@@ -27,6 +32,53 @@ wheels/
 .venv/
 venv/
 ENV/
+.pytest_cache/
+.mypy_cache/
+
+# IDE et éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Node.js (frontend uniquement)
+node_modules/
+npm-debug.log
+yarn-error.log
+.next/
+
+# Base de données
+*.db
+*.sqlite
+*.sqlite3
+*.postgres
+
+# Cache
+.cache/
+*.cache
+.pytest_cache/
+
+# Logs
+logs/
+*.log
+
+# Environnement
+.env
+.env.local
+
+# Docker
+docker-compose.override.yml
+Dockerfile.dev
+
+# Autres
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
 
 # Caches de l'application
 .cache_marotrade/
