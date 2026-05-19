@@ -21,10 +21,9 @@ export default function CountryDetailPage() {
   const { country, score_final, dimensions, shap_values, top_atouts, top_risques, accord_info, logistique, forecast } = result
 
   return (
-    <div className="max-w-6xl mx-auto space-y-10 py-6">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">
-        <Link href="/" className="hover:text-primary transition-colors">Accueil</Link>
+    <div className="mx-auto max-w-6xl space-y-8 py-2">
+      <nav className="flex flex-wrap items-center gap-2 text-xs font-medium text-text-muted">
+        <Link href="/dashboard" className="hover:text-primary transition-colors">Tableau de bord</Link>
         <ChevronRight className="w-3 h-3 opacity-30" />
         <Link href="/results" className="hover:text-primary transition-colors">Résultats d'Analyse</Link>
         <ChevronRight className="w-3 h-3 opacity-30" />
@@ -32,36 +31,36 @@ export default function CountryDetailPage() {
       </nav>
 
       {/* Hero Header */}
-      <div className="relative overflow-hidden bg-white border border-border rounded-[2.5rem] p-10 shadow-[0_8px_30px_rgb(0,0,0,0.02)] group">
-        <div className="absolute top-0 right-0 p-10 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity">
-          <Globe className="w-64 h-64 text-primary" />
+      <div className="group relative overflow-hidden rounded-xl border border-border bg-surface p-6 shadow-sm sm:p-8 lg:p-10">
+        <div className="pointer-events-none absolute right-0 top-0 p-8 opacity-[0.04] transition-opacity group-hover:opacity-[0.07]">
+          <Globe className="h-48 w-48 text-primary-600" />
         </div>
-        
-        <div className="relative flex flex-wrap items-center gap-10">
-          <div className="text-8xl p-4 bg-secondary/50 rounded-3xl group-hover:scale-110 transition-transform duration-500">
+
+        <div className="relative flex flex-wrap items-center gap-8">
+          <div className="rounded-xl bg-secondary/70 p-4 text-6xl transition-transform duration-300 group-hover:scale-[1.02] sm:text-7xl">
             {country.flag}
           </div>
-          
-          <div className="flex-1 space-y-4">
-            <div className="flex items-center gap-4">
-              <h1 className="text-5xl font-extrabold text-text-primary tracking-tighter">{country.name}</h1>
-              <div className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-full">
-                Marché Prioritaire
-              </div>
+
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-semibold tracking-tight text-text-primary sm:text-4xl">{country.name}</h1>
+              <span className="rounded-full bg-primary-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary-700 dark:bg-primary-950/50 dark:text-primary-300">
+                Marché prioritaire
+              </span>
             </div>
-            
-            <p className="text-xl font-medium text-text-secondary max-w-2xl leading-relaxed">
+
+            <p className="max-w-2xl text-base leading-relaxed text-text-secondary sm:text-lg">
               {accord_info.accord} — <span className="text-primary font-bold">Droits à l'import : {accord_info.droits}%</span>
             </p>
             
             {forecast && (
-              <div className="flex items-center gap-6 pt-2">
-                <div className="flex items-center gap-2 text-sm font-bold text-success">
+              <div className="flex flex-wrap items-center gap-4 pt-1 sm:gap-6">
+                <div className="flex items-center gap-2 text-sm font-medium text-success">
                   <TrendingUp className="w-4 h-4" />
                   +{(forecast.cagr_prevu).toFixed(1)}%/an (CAGR)
                 </div>
                 <div className="h-4 w-px bg-border" />
-                <div className="text-sm font-bold text-text-muted">
+                <div className="text-sm font-medium text-text-muted">
                   Prévision 2026 : <span className="text-text-primary">{(forecast.valeur_2026).toFixed(1)}M USD</span>
                 </div>
               </div>
@@ -69,8 +68,12 @@ export default function CountryDetailPage() {
           </div>
           
           <div className="flex flex-col items-center gap-2">
-            <ScoreBadge score={score_final} size="lg" className="text-4xl w-32 h-32 rounded-[2rem] shadow-xl shadow-primary/10" />
-            <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">Score Final IA</span>
+            <ScoreBadge
+              score={score_final}
+              size="lg"
+              className="h-28 w-28 rounded-2xl text-3xl shadow-md shadow-primary-600/10 sm:h-32 sm:w-32 sm:text-4xl"
+            />
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Score final</span>
           </div>
         </div>
       </div>
@@ -87,24 +90,27 @@ export default function CountryDetailPage() {
               { label: 'Distance Mer', value: `${logistique.distance_km.toLocaleString()} km`, icon: <Ship className="w-4 h-4" />, color: 'secondary' },
               { label: 'Risque Pays', value: 'Low', icon: <ShieldCheck className="w-4 h-4" />, color: 'success' },
             ].map((fact) => (
-              <div key={fact.label} className="bg-white border border-border transition-all hover:border-primary/30 p-5 rounded-3xl shadow-sm">
-                <div className="flex items-center gap-2 text-text-muted mb-3">
+              <div
+                key={fact.label}
+                className="rounded-xl border border-border bg-surface p-4 shadow-sm transition-colors hover:border-primary-200 dark:hover:border-primary-800 sm:p-5"
+              >
+                <div className="mb-2 flex items-center gap-2 text-text-muted">
                   {fact.icon}
-                  <span className="text-[9px] font-black uppercase tracking-widest">{fact.label}</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">{fact.label}</span>
                 </div>
-                <p className="text-lg font-black text-text-primary">{fact.value}</p>
+                <p className="text-lg font-semibold text-text-primary">{fact.value}</p>
               </div>
             ))}
           </div>
 
           {/* Scores Detail */}
-          <div className="bg-white border border-border rounded-[2.5rem] p-10 shadow-sm space-y-8">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-text-primary flex items-center gap-3">
-                <Target className="w-5 h-5 text-primary" />
-                Détail des Performances
+          <div className="space-y-6 rounded-xl border border-border bg-surface p-6 shadow-sm sm:p-8 lg:p-10">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-text-primary">
+                <Target className="h-5 w-5 text-primary-600" />
+                Performances
               </h2>
-              <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">6 Dimensions Stratégiques</span>
+              <span className="text-xs font-medium text-text-muted">6 dimensions</span>
             </div>
             <div className="grid gap-6">
               {dimensions.map((d) => (
@@ -117,14 +123,18 @@ export default function CountryDetailPage() {
         {/* Sidebar Context */}
         <div className="space-y-8">
           {/* Atouts */}
-          <div className="bg-white border border-success/20 rounded-[2.5rem] p-8 shadow-sm">
-            <h3 className="text-sm font-black text-success uppercase tracking-[0.15em] mb-6 flex items-center gap-2">
+          <div className="rounded-xl border border-success/30 bg-success-muted/40 p-6 shadow-sm dark:bg-success-muted/20 sm:p-8">
+            <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-success">
               <CheckCircle size={16} className="text-success" />
-              Atouts Compétitifs
+              Atouts
             </h3>
             <ul className="space-y-4">
               {top_atouts.map((a, i) => (
-                <li key={i} className="flex gap-3 text-sm font-bold text-text-secondary leading-tight animate-in slide-in-from-right duration-500" style={{ animationDelay: `${i*100}ms` }}>
+                <li
+                  key={i}
+                  className="flex gap-3 text-sm font-medium leading-snug text-text-secondary"
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
                   <div className="w-1.5 h-1.5 rounded-full bg-success mt-1.5 flex-shrink-0" />
                   {a}
                 </li>
@@ -134,14 +144,14 @@ export default function CountryDetailPage() {
 
           {/* Risques */}
           {top_risques.length > 0 && (
-            <div className="bg-white border border-warning/20 rounded-[2.5rem] p-8 shadow-sm">
-              <h3 className="text-sm font-black text-warning uppercase tracking-[0.15em] mb-6 flex items-center gap-2">
+            <div className="rounded-xl border border-warning-500/25 bg-warning-50/50 p-6 shadow-sm dark:bg-warning-600/10 sm:p-8">
+              <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-warning-600">
                 <AlertTriangle size={16} className="text-warning" />
-                Vigilance Requise
+                Points de vigilance
               </h3>
               <ul className="space-y-4">
                 {top_risques.map((r, i) => (
-                  <li key={i} className="flex gap-3 text-sm font-bold text-text-secondary leading-tight" style={{ animationDelay: `${i*100}ms` }}>
+                  <li key={i} className="flex gap-3 text-sm font-medium leading-snug text-text-secondary">
                     <div className="w-1.5 h-1.5 rounded-full bg-warning mt-1.5 flex-shrink-0" />
                     {r}
                   </li>
@@ -152,10 +162,10 @@ export default function CountryDetailPage() {
 
           {/* Expert Mode Banner */}
           {!expertMode && (
-            <div className="bg-secondary/30 rounded-[2rem] p-8 text-center border-2 border-dashed border-border/50">
-              <Sparkles className="w-8 h-8 text-primary mx-auto mb-4 animate-pulse" />
-              <p className="text-xs font-black text-text-secondary uppercase tracking-widest mb-2">Vues Avancées</p>
-              <p className="text-sm font-medium text-text-muted leading-relaxed">
+            <div className="rounded-xl border border-dashed border-border bg-secondary/40 p-6 text-center sm:p-8">
+              <Sparkles className="mx-auto mb-3 h-8 w-8 text-primary-600" />
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">Vues avancées</p>
+              <p className="text-sm leading-relaxed text-text-muted">
                 Activez le <strong>Mode Expert</strong> pour débloquer les contributions SHAP et les prévisions Prophet.
               </p>
             </div>
@@ -166,20 +176,20 @@ export default function CountryDetailPage() {
       {/* Expert Section */}
       {expertMode && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-10 duration-1000">
-          <div className="bg-white border border-border rounded-[2.5rem] p-10 shadow-sm">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-xl font-bold text-text-primary flex items-center gap-3">
-                <Info className="w-5 h-5 text-primary" />
+          <div className="rounded-xl border border-border bg-surface p-6 shadow-sm sm:p-8 lg:p-10">
+            <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-text-primary">
+                <Info className="h-5 w-5 text-primary-600" />
                 Explicabilité SHAP
               </h2>
-              <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">Impact sur le score</span>
+              <span className="text-xs font-medium text-text-muted">Impact sur le score</span>
             </div>
             <ShapWaterfall shapValues={shap_values} />
           </div>
           
-          <div className="bg-white border border-border rounded-[2.5rem] p-10 shadow-sm">
-            <h2 className="text-xl font-bold text-text-primary mb-8 flex items-center gap-3">
-              <TrendingUp className="w-5 h-5 text-primary" />
+          <div className="rounded-xl border border-border bg-surface p-6 shadow-sm sm:p-8 lg:p-10">
+            <h2 className="mb-6 flex items-center gap-2 text-lg font-semibold text-text-primary">
+              <TrendingUp className="h-5 w-5 text-primary-600" />
               Projection Prophet
             </h2>
             <ForecastChart data={MOCK_FORECAST} />
