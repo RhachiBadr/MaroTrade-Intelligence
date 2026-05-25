@@ -36,7 +36,7 @@ export function AnimatedButton({
   type = 'button',
 }: AnimatedButtonProps) {
   const classes = cn(
-    'relative inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-colors overflow-hidden',
+    'magnetic-button relative inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-300 overflow-hidden',
     variants[variant],
     sizes[size],
     className
@@ -46,19 +46,20 @@ export function AnimatedButton({
     <>
       {variant === 'primary' && (
         <motion.span
-          className="absolute inset-0 bg-gradient-to-r from-primary-400/0 via-white/20 to-primary-400/0"
+          className="absolute inset-0 bg-gradient-to-r from-primary-400/0 via-white/25 to-primary-400/0"
           initial={{ x: '-100%' }}
           whileHover={{ x: '100%' }}
           transition={{ duration: 0.6, ease: 'easeInOut' }}
         />
       )}
+      <span className="pointer-events-none absolute inset-0 rounded-xl border border-white/10" />
       <span className="relative">{children}</span>
     </>
   )
 
   if (href) {
     return (
-      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+      <motion.div whileHover={{ scale: 1.035, y: -2 }} whileTap={{ scale: 0.98 }}>
         <Link href={href} className={classes}>
           {content}
         </Link>
@@ -71,7 +72,7 @@ export function AnimatedButton({
       type={type}
       onClick={onClick}
       className={classes}
-      whileHover={{ scale: 1.02 }}
+      whileHover={{ scale: 1.035, y: -2 }}
       whileTap={{ scale: 0.98 }}
     >
       {content}

@@ -18,23 +18,24 @@ export function MarketingShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen w-full max-w-full flex-col overflow-x-hidden bg-background">
       <header className="fixed inset-x-0 top-0 z-50">
-        <div className="mx-4 mt-4 sm:mx-6 lg:mx-8">
-          <nav className="glass flex h-14 items-center justify-between gap-4 rounded-2xl px-4 sm:px-6">
-            <Link href="/" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-lg shadow-primary-600/30">
+        <div className="mx-auto mt-4" style={{ width: 'min(80rem, calc(100vw - 2rem))' }}>
+          <nav className="glass flex h-16 w-full min-w-0 items-center justify-between gap-3 rounded-2xl px-3 shadow-[0_18px_70px_rgba(0,0,0,0.2)] ring-1 ring-white/5 sm:px-4">
+            <Link href="/" className="group flex items-center gap-2.5 rounded-xl px-2 py-1.5" onClick={() => setOpen(false)}>
+              <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 via-sky-500 to-accent-500 text-white shadow-lg shadow-primary-600/30 transition-transform duration-300 group-hover:scale-105">
+                <span className="absolute inset-0 rounded-xl bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
                 <Globe className="h-4 w-4" aria-hidden />
               </span>
               <span className="font-semibold tracking-tight text-text-primary">MaroTrade</span>
             </Link>
 
-            <div className="hidden items-center gap-1 md:flex">
+            <div className="hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1 md:flex">
               {NAV.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
+                  className="relative rounded-lg px-3 py-2 text-sm font-medium text-text-secondary transition-all duration-300 hover:bg-white/10 hover:text-text-primary"
                 >
                   {item.label}
                 </Link>
@@ -49,7 +50,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
                 Connexion
               </Link>
               <AnimatedButton href="/analyze" size="sm" className="hidden sm:inline-flex">
-                Essayer gratuitement
+                Essayer
               </AnimatedButton>
               <button
                 type="button"
@@ -70,7 +71,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="mx-4 mt-2 glass rounded-2xl p-4 md:hidden sm:mx-6"
+            className="mx-4 mt-2 glass rounded-2xl p-4 shadow-[0_18px_70px_rgba(0,0,0,0.25)] md:hidden sm:mx-6"
             >
               <nav className="flex flex-col gap-1">
                 {NAV.map((item) => (
@@ -98,7 +99,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
       <main className="flex-1 pt-20">{children}</main>
 
       <footer className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-3">
               <div className="flex items-center gap-2">

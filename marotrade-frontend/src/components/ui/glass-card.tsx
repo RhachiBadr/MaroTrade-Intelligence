@@ -4,15 +4,17 @@ import type { HTMLAttributes } from 'react'
 type GlassCardProps = HTMLAttributes<HTMLDivElement> & {
   hover?: boolean
   glow?: boolean
+  tilt?: boolean
 }
 
-export function GlassCard({ className, hover = true, glow = false, ...props }: GlassCardProps) {
+export function GlassCard({ className, hover = true, glow = false, tilt = false, ...props }: GlassCardProps) {
   return (
     <div
       className={cn(
-        'glass rounded-xl shadow-md',
-        hover && 'transition-all duration-300 hover:border-white/20 hover:shadow-lg',
-        glow && 'shadow-[0_0_60px_rgba(99,102,241,0.15)]',
+        'glass premium-card rounded-xl shadow-md',
+        hover && 'transition-all duration-500 hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_24px_90px_rgba(79,70,229,0.18)]',
+        glow && 'premium-glow shadow-[0_0_80px_rgba(99,102,241,0.2)]',
+        tilt && 'tilt-card',
         className
       )}
       {...props}

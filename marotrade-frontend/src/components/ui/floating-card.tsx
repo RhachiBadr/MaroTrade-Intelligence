@@ -16,7 +16,7 @@ export function FloatingCard({ children, className, delay = 0, floatIntensity = 
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
-      className={cn('glass rounded-xl p-5 shadow-lg', className)}
+      className={cn('glass premium-card rounded-xl p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)]', className)}
     >
       <motion.div
         animate={{ y: [-floatIntensity / 2, floatIntensity / 2, -floatIntensity / 2] }}
