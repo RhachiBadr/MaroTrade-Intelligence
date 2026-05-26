@@ -1,0 +1,182 @@
+{
+  "FRA": {
+    "name": "France",
+    "gdp_per_capita": 46103.0840855884,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 34.2184333099912,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 43.9631775031648,
+    "trade_pct_gdp_year": "2024"
+  },
+  "DEU": {
+    "name": "Allemagne",
+    "gdp_per_capita": 56103.7323182554,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 37.6566712174028,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 66.2339063515856,
+    "trade_pct_gdp_year": "2024"
+  },
+  "USA": {
+    "name": "États-Unis",
+    "gdp_per_capita": 84534.0407841548,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 14.2711775613413,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 18.8672542761173,
+    "trade_pct_gdp_year": "2024"
+  },
+  "ESP": {
+    "name": "Espagne",
+    "gdp_per_capita": 35326.7683069278,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 32.8943819660923,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 51.9302729795657,
+    "trade_pct_gdp_year": "2024"
+  },
+  "ITA": {
+    "name": "Italie",
+    "gdp_per_capita": 40385.3413957669,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 30.3187269579455,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 54.1755046319193,
+    "trade_pct_gdp_year": "2024"
+  },
+  "NLD": {
+    "name": "Pays-Bas",
+    "gdp_per_capita": 67520.4218956281,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 71.4002916810324,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 142.828417035734,
+    "trade_pct_gdp_year": "2024"
+  },
+  "BEL": {
+    "name": "Belgique",
+    "gdp_per_capita": 56614.5679499036,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 79.6587399265935,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 156.416562001153,
+    "trade_pct_gdp_year": "2024"
+  },
+  "GBR": {
+    "name": "Royaume-Uni",
+    "gdp_per_capita": 53246.3676145108,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 31.856001686543,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 36.0438439907329,
+    "trade_pct_gdp_year": "2024"
+  },
+  "CAN": {
+    "name": "Canada",
+    "gdp_per_capita": 54340.3477224733,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 32.706147029013,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 50.9421126642333,
+    "trade_pct_gdp_year": "2024"
+  },
+  "JPN": {
+    "name": "Japon",
+    "gdp_per_capita": 32487.0778047567,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 23.6379517504111,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 36.0141993215173,
+    "trade_pct_gdp_year": "2024"
+  },
+  "SAU": {
+    "name": "Arabie Saoudite",
+    "gdp_per_capita": 35121.6628687742,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 25.5694929974983,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 43.4185378039162,
+    "trade_pct_gdp_year": "2024"
+  },
+  "ARE": {
+    "name": "Émirats Arabes",
+    "gdp_per_capita": 50273.5060469837,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 92.1988402202852,
+    "imports_pct_gdp_year": "2023",
+    "trade_pct_gdp": 207.764145787865,
+    "trade_pct_gdp_year": "2024"
+  },
+  "QAT": {
+    "name": "Qatar",
+    "gdp_per_capita": 76688.6941743178,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 31.6152320211846,
+    "imports_pct_gdp_year": "2022",
+    "trade_pct_gdp": 59.3568326998867,
+    "trade_pct_gdp_year": "2024"
+  },
+  "KWT": {
+    "name": "Koweït",
+    "gdp_per_capita": 32717.7186631255,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 38.3496376441492,
+    "imports_pct_gdp_year": "2023",
+    "trade_pct_gdp": 70.5597729060569,
+    "trade_pct_gdp_year": "2024"
+  },
+  "CHN": {
+    "name": "Chine",
+    "gdp_per_capita": 13303.1481543868,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 17.1755035026016,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 32.8725442955454,
+    "trade_pct_gdp_year": "2024"
+  },
+  "KOR": {
+    "name": "Corée du Sud",
+    "gdp_per_capita": 36238.639908315,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 40.2842567598803,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 70.1388647642219,
+    "trade_pct_gdp_year": "2024"
+  },
+  "SGP": {
+    "name": "Singapour",
+    "gdp_per_capita": 90674.066632628,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 143.595141120325,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 176.172365043508,
+    "trade_pct_gdp_year": "2024"
+  },
+  "AUS": {
+    "name": "Australie",
+    "gdp_per_capita": 64603.9856308464,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 22.5238570535723,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 36.2641353501553,
+    "trade_pct_gdp_year": "2024"
+  },
+  "NOR": {
+    "name": "Norvège",
+    "gdp_per_capita": 86785.4334489176,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 33.8718001711117,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 55.3569209403213,
+    "trade_pct_gdp_year": "2024"
+  },
+  "CHE": {
+    "name": "Suisse",
+    "gdp_per_capita": 103998.186685604,
+    "gdp_per_capita_year": "2024",
+    "imports_pct_gdp": 61.9362037538192,
+    "imports_pct_gdp_year": "2024",
+    "trade_pct_gdp": 87.1346568340343,
+    "trade_pct_gdp_year": "2024"
+  }
+}

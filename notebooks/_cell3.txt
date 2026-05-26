@@ -1,0 +1,13 @@
+---
+## 1. EDA — Chargement et exploration des données
+
+### Justification des filtres appliqués
+
+| Filtre | Avant | Après | Raison |
+|---|---|---|---|
+| Pays avec accords | 37,314 | 10,115 | Périmètre cohérent avec données métier |
+| value_usd ≥ 100K | 10,115 | 6,788 | 47.8% des lignes = bruit pur (exports anecdotiques) |
+| Lags complets (lag1/2/3) | 6,788 | 4,886 | 2015-2017 sans lag3 → médiane = bruit |
+| Clip log_return [-100,100] | std=78% | std=51% | Outliers extrêmes (chocs uniques non modélisables) |
+
+**Dataset final :** 4,886 lignes · 88 produits HS · 18 pays · 2018–2024

@@ -1,0 +1,15 @@
+# 📊 Benchmark ML — MaroTrade Intelligence (Phase 1)
+### Voie 100% Data-Driven · Format Publication PFE
+
+> **Le score ML (data-driven) détermine le classement. Les 7 dimensions sont une lecture
+> métier post-hoc pour l'explicabilité PME, pas la cible d'entraînement.**
+
+| Paramètre | Valeur |
+|---|---|
+| **Données** | Comtrade AG2 · 18 pays accords · 88 produits HS · 2018–2024 |
+| **Filtre** | value_usd ≥ 100K USD · lags complets (≥ 2018) |
+| **Variable cible** | log_return = log(V_{t+1}/V_t) × 100 |
+| **Split** | Train ≤2021 · Val 2022-23 · Test 2024 |
+| **CV** | TimeSeriesSplit (4 folds) — pas de KFold aléatoire |
+| **Métriques** | RMSE · MAE · R² · **Spearman ranking** |
+| **Modèles** | Ridge (baseline) · XGBoost · LightGBM · CatBoost |

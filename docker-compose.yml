@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # Base de données PostgreSQL - Étape 4
+  postgres:
+    image: postgres:15-alpine
+    container_name: marotrade-postgres
+    environment:
+      POSTGRES_DB: marotrade
+      POSTGRES_USER: marotrade
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./prisma/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - marotrade-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marotrade -d marotrade"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cache Redis - Étape 4
+  redis:
+    image: redis:7-alpine
+    container_name: marotrade-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - marotrade-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API FastAPI - Production
+  api:
+    build: .
+    container_name: marotrade-api
+    environment:
+      - DATABASE_URL=postgresql://marotrade:password@postgres:5432/marotrade
+      - REDIS_URL=redis://redis:6379
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - CACHE_DIR=.cache_marotrade
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - .cache_marotrade:/app/.cache_marotrade
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - marotrade-network
+    command: uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+
+  # Interface Next.js - Production
+  frontend:
+    build: ./marotrade-frontend
+    container_name: marotrade-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    volumes:
+      - ./marotrade-frontend:/app
+      - /app/node_modules
+    networks:
+      - marotrade-network
+    command: npm run dev
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  marotrade-network:
+    driver: bridge

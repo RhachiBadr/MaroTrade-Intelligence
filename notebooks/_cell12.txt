@@ -1,0 +1,4 @@
+---
+## 6. Analyse des Résidus
+
+**Vérification des hypothèses statistiques du modèle Ridge (best model) :**

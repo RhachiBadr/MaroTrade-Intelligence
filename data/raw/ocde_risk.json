@@ -1,0 +1,102 @@
+{
+  "FRA": {
+    "category": 0,
+    "score": 100,
+    "label": "Pays OCDE"
+  },
+  "DEU": {
+    "category": 0,
+    "score": 100,
+    "label": "Pays OCDE"
+  },
+  "USA": {
+    "category": 0,
+    "score": 100,
+    "label": "Pays OCDE"
+  },
+  "ESP": {
+    "category": 0,
+    "score": 100,
+    "label": "Pays OCDE"
+  },
+  "ITA": {
+    "category": 0,
+    "score": 100,
+    "label": "Pays OCDE"
+  },
+  "NLD": {
+    "category": 0,
+    "score": 100,
+    "label": "Pays OCDE"
+  },
+  "BEL": {
+    "category": 0,
+    "score": 100,
+    "label": "Pays OCDE"
+  },
+  "GBR": {
+    "category": 0,
+    "score": 100,
+    "label": "Pays OCDE"
+  },
+  "CAN": {
+    "category": 0,
+    "score": 100,
+    "label": "Pays OCDE"
+  },
+  "JPN": {
+    "category": 0,
+    "score": 100,
+    "label": "Pays OCDE"
+  },
+  "AUS": {
+    "category": 0,
+    "score": 100,
+    "label": "Pays OCDE"
+  },
+  "NOR": {
+    "category": 0,
+    "score": 100,
+    "label": "Pays OCDE"
+  },
+  "CHE": {
+    "category": 0,
+    "score": 100,
+    "label": "Pays OCDE"
+  },
+  "KOR": {
+    "category": 0,
+    "score": 100,
+    "label": "Pays OCDE"
+  },
+  "SAU": {
+    "category": 2,
+    "score": 70,
+    "label": "Risque faible"
+  },
+  "ARE": {
+    "category": 2,
+    "score": 70,
+    "label": "Risque faible"
+  },
+  "QAT": {
+    "category": 2,
+    "score": 70,
+    "label": "Risque faible"
+  },
+  "KWT": {
+    "category": 2,
+    "score": 70,
+    "label": "Risque faible"
+  },
+  "CHN": {
+    "category": 2,
+    "score": 65,
+    "label": "Risque faible"
+  },
+  "SGP": {
+    "category": 1,
+    "score": 90,
+    "label": "Risque très faible"
+  }
+}

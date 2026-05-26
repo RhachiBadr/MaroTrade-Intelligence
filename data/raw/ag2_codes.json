@@ -1,0 +1,386 @@
+{
+  "31": {
+    "desc": "Fertilizers",
+    "value_2022": 44623209.954
+  },
+  "45": {
+    "desc": "Cork and articles of cork",
+    "value_2022": 21327769.189
+  },
+  "69": {
+    "desc": "Ceramic products",
+    "value_2022": 17091200.566
+  },
+  "81": {
+    "desc": "Metals; n.e.c., cermets and articles thereof",
+    "value_2022": 13446913.895
+  },
+  "25": {
+    "desc": "Salt; sulphur; earths, stone; plastering materials, lime and cement",
+    "value_2022": 13367081.724
+  },
+  "85": {
+    "desc": "Electrical machinery and equipment and parts thereof; sound recorders and reproducers; television image and sound recorders and reproducers, parts and accessories of such articles",
+    "value_2022": 12023834.228
+  },
+  "06": {
+    "desc": "Trees and other plants, live; bulbs, roots and the like; cut flowers and ornamental foliage",
+    "value_2022": 4736771.382
+  },
+  "39": {
+    "desc": "Plastics and articles thereof",
+    "value_2022": 4652684.809
+  },
+  "88": {
+    "desc": "Aircraft, spacecraft, and parts thereof",
+    "value_2022": 3491634.251
+  },
+  "75": {
+    "desc": "Nickel and articles thereof",
+    "value_2022": 2610815.937
+  },
+  "30": {
+    "desc": "Pharmaceutical products",
+    "value_2022": 2027201.999
+  },
+  "17": {
+    "desc": "Sugars and sugar confectionery",
+    "value_2022": 1599437.465
+  },
+  "03": {
+    "desc": "Fish and crustaceans, molluscs and other aquatic invertebrates",
+    "value_2022": 1475685.664
+  },
+  "64": {
+    "desc": "Footwear; gaiters and the like; parts of such articles",
+    "value_2022": 1404051.655
+  },
+  "21": {
+    "desc": "Miscellaneous edible preparations",
+    "value_2022": 1348626.777
+  },
+  "70": {
+    "desc": "Glass and glassware",
+    "value_2022": 1228497.19
+  },
+  "13": {
+    "desc": "Lac; gums, resins and other vegetable saps and extracts",
+    "value_2022": 987582.469
+  },
+  "74": {
+    "desc": "Copper and articles thereof",
+    "value_2022": 936900.123
+  },
+  "16": {
+    "desc": "Meat, fish, crustaceans, molluscs or other aquatic invertebrates, or insects; preparations thereof",
+    "value_2022": 936206.528
+  },
+  "08": {
+    "desc": "Fruit and nuts, edible; peel of citrus fruit or melons",
+    "value_2022": 913376.552
+  },
+  "04": {
+    "desc": "Dairy produce; birds' eggs; natural honey; edible products of animal origin, not elsewhere specified or included",
+    "value_2022": 781753.913
+  },
+  "15": {
+    "desc": "Animal, vegetable or microbial fats and oils and their cleavage products; prepared edible fats; animal or vegetable waxes",
+    "value_2022": 719011.732
+  },
+  "55": {
+    "desc": "Man-made staple fibres",
+    "value_2022": 640858.543
+  },
+  "89": {
+    "desc": "Ships, boats and floating structures",
+    "value_2022": 557393.914
+  },
+  "80": {
+    "desc": "Tin; articles thereof",
+    "value_2022": 440298.351
+  },
+  "47": {
+    "desc": "Pulp of wood or other fibrous cellulosic material; recovered (waste and scrap) paper or paperboard",
+    "value_2022": 385999.055
+  },
+  "49": {
+    "desc": "Printed books, newspapers, pictures and other products of the printing industry; manuscripts, typescripts and plans",
+    "value_2022": 381155.935
+  },
+  "97": {
+    "desc": "Works of art; collectors' pieces and antiques",
+    "value_2022": 324602.819
+  },
+  "56": {
+    "desc": "Wadding, felt and nonwovens, special yarns; twine, cordage, ropes and cables and articles thereof",
+    "value_2022": 309193.289
+  },
+  "54": {
+    "desc": "Man-made filaments; strip and the like of man-made textile materials",
+    "value_2022": 224210.518
+  },
+  "66": {
+    "desc": "Umbrellas, sun umbrellas, walking-sticks, seat sticks, whips, riding crops; and parts thereof",
+    "value_2022": 212703.398
+  },
+  "27": {
+    "desc": "Mineral fuels, mineral oils and products of their distillation; bituminous substances; mineral waxes",
+    "value_2022": 208510.66
+  },
+  "22": {
+    "desc": "Beverages, spirits and vinegar",
+    "value_2022": 202805.322
+  },
+  "20": {
+    "desc": "Preparations of vegetables, fruit, nuts or other parts of plants",
+    "value_2022": 173849.398
+  },
+  "14": {
+    "desc": "Vegetable plaiting materials; vegetable products not elsewhere specified or included",
+    "value_2022": 142817.056
+  },
+  "05": {
+    "desc": "Animal originated products; not elsewhere specified or included",
+    "value_2022": 140783.566
+  },
+  "34": {
+    "desc": "Soap, organic surface-active agents; washing, lubricating, polishing or scouring preparations; artificial or prepared waxes, candles and similar articles, modelling pastes, dental waxes and dental preparations with a basis of plaster",
+    "value_2022": 135096.337
+  },
+  "79": {
+    "desc": "Zinc and articles thereof",
+    "value_2022": 106306.083
+  },
+  "44": {
+    "desc": "Wood and articles of wood; wood charcoal",
+    "value_2022": 103289.35
+  },
+  "23": {
+    "desc": "Food industries, residues and wastes thereof; prepared animal fodder",
+    "value_2022": 99993.599
+  },
+  "83": {
+    "desc": "Metal; miscellaneous products of base metal",
+    "value_2022": 65385.711
+  },
+  "57": {
+    "desc": "Carpets and other textile floor coverings",
+    "value_2022": 57926.465
+  },
+  "07": {
+    "desc": "Vegetables and certain roots and tubers; edible",
+    "value_2022": 40333.501
+  },
+  "12": {
+    "desc": "Oil seeds and oleaginous fruits; miscellaneous grains, seeds and fruit, industrial or medicinal plants; straw and fodder",
+    "value_2022": 38457.343
+  },
+  "41": {
+    "desc": "Raw hides and skins (other than furskins) and leather",
+    "value_2022": 35858.89
+  },
+  "94": {
+    "desc": "Furniture; bedding, mattresses, mattress supports, cushions and similar stuffed furnishings; lamps and lighting fittings, n.e.c.; illuminated signs, illuminated name-plates and the like; prefabricated buildings",
+    "value_2022": 30050.803
+  },
+  "95": {
+    "desc": "Toys, games and sports requisites; parts and accessories thereof",
+    "value_2022": 25654.533
+  },
+  "10": {
+    "desc": "Cereals",
+    "value_2022": 24162.595
+  },
+  "38": {
+    "desc": "Chemical products n.e.c.",
+    "value_2022": 23733.694
+  },
+  "26": {
+    "desc": "Ores, slag and ash",
+    "value_2022": 22987.679
+  },
+  "43": {
+    "desc": "Furskins and artificial fur; manufactures thereof",
+    "value_2022": 22399.036
+  },
+  "58": {
+    "desc": "Fabrics; special woven fabrics, tufted textile fabrics, lace, tapestries, trimmings, embroidery",
+    "value_2022": 20353.697
+  },
+  "19": {
+    "desc": "Preparations of cereals, flour, starch or milk; pastrycooks' products",
+    "value_2022": 19967.895
+  },
+  "35": {
+    "desc": "Albuminoidal substances; modified starches; glues; enzymes",
+    "value_2022": 15909.99
+  },
+  "51": {
+    "desc": "Wool, fine or coarse animal hair; horsehair yarn and woven fabric",
+    "value_2022": 15437.011
+  },
+  "91": {
+    "desc": "Clocks and watches and parts thereof",
+    "value_2022": 14912.81
+  },
+  "82": {
+    "desc": "Tools, implements, cutlery, spoons and forks, of base metal; parts thereof, of base metal",
+    "value_2022": 14781.291
+  },
+  "28": {
+    "desc": "Inorganic chemicals; organic and inorganic compounds of precious metals; of rare earth metals, of radio-active elements and of isotopes",
+    "value_2022": 14494.97
+  },
+  "40": {
+    "desc": "Rubber and articles thereof",
+    "value_2022": 11416.664
+  },
+  "52": {
+    "desc": "Cotton",
+    "value_2022": 10314.858
+  },
+  "63": {
+    "desc": "Textiles, made up articles; sets; worn clothing and worn textile articles; rags",
+    "value_2022": 9872.488
+  },
+  "60": {
+    "desc": "Fabrics; knitted or crocheted",
+    "value_2022": 9654.884
+  },
+  "59": {
+    "desc": "Textile fabrics; impregnated, coated, covered or laminated; textile articles of a kind suitable for industrial use",
+    "value_2022": 8697.565
+  },
+  "42": {
+    "desc": "Articles of leather; saddlery and harness; travel goods, handbags and similar containers; articles of animal gut (other than silk-worm gut)",
+    "value_2022": 5657.703
+  },
+  "65": {
+    "desc": "Headgear and parts thereof",
+    "value_2022": 5558.71
+  },
+  "33": {
+    "desc": "Essential oils and resinoids; perfumery, cosmetic or toilet preparations",
+    "value_2022": 4307.397
+  },
+  "02": {
+    "desc": "Meat and edible meat offal",
+    "value_2022": 2769.308
+  },
+  "37": {
+    "desc": "Photographic or cinematographic goods",
+    "value_2022": 2538.516
+  },
+  "86": {
+    "desc": "Railway, tramway locomotives, rolling-stock and parts thereof; railway or tramway track fixtures and fittings and parts thereof; mechanical (including electro-mechanical) traffic signalling equipment of all kinds",
+    "value_2022": 2148.581
+  },
+  "09": {
+    "desc": "Coffee, tea, mate and spices",
+    "value_2022": 2062.855
+  },
+  "32": {
+    "desc": "Tanning or dyeing extracts; tannins and their derivatives; dyes, pigments and other colouring matter; paints, varnishes; putty, other mastics; inks",
+    "value_2022": 1742.702
+  },
+  "72": {
+    "desc": "Iron and steel",
+    "value_2022": 1543.404
+  },
+  "62": {
+    "desc": "Apparel and clothing accessories; not knitted or crocheted",
+    "value_2022": 1510.335
+  },
+  "61": {
+    "desc": "Apparel and clothing accessories; knitted or crocheted",
+    "value_2022": 1325.996
+  },
+  "01": {
+    "desc": "Animals; live",
+    "value_2022": 1194.411
+  },
+  "18": {
+    "desc": "Cocoa and cocoa preparations",
+    "value_2022": 1077.686
+  },
+  "90": {
+    "desc": "Optical, photographic, cinematographic, measuring, checking, medical or surgical instruments and apparatus; parts and accessories",
+    "value_2022": 987.337
+  },
+  "48": {
+    "desc": "Paper and paperboard; articles of paper pulp, of paper or paperboard",
+    "value_2022": 822.387
+  },
+  "67": {
+    "desc": "Feathers and down, prepared; and articles made of feather or of down; artificial flowers; articles of human hair",
+    "value_2022": 812.546
+  },
+  "92": {
+    "desc": "Musical instruments; parts and accessories of such articles",
+    "value_2022": 807.034
+  },
+  "84": {
+    "desc": "Machinery and mechanical appliances, boilers, nuclear reactors; parts thereof",
+    "value_2022": 545.142
+  },
+  "24": {
+    "desc": "Tobacco and manufactured tobacco substitutes; products, whether or not containing nicotine, intended for inhalation without combustion; other nicotine containing products intended for the intake of nicotine into the human body",
+    "value_2022": 481.858
+  },
+  "78": {
+    "desc": "Lead and articles thereof",
+    "value_2022": 463.257
+  },
+  "93": {
+    "desc": "Arms and ammunition; parts and accessories thereof",
+    "value_2022": 390.034
+  },
+  "46": {
+    "desc": "Manufactures of straw, esparto or other plaiting materials; basketware and wickerwork",
+    "value_2022": 314.94
+  },
+  "68": {
+    "desc": "Stone, plaster, cement, asbestos, mica or similar materials; articles thereof",
+    "value_2022": 286.596
+  },
+  "53": {
+    "desc": "Vegetable textile fibres; paper yarn and woven fabrics of paper yarn",
+    "value_2022": 199.889
+  },
+  "36": {
+    "desc": "Explosives; pyrotechnic products; matches; pyrophoric alloys; certain combustible preparations",
+    "value_2022": 192.409
+  },
+  "87": {
+    "desc": "Vehicles; other than railway or tramway rolling stock, and parts and accessories thereof",
+    "value_2022": 137.786
+  },
+  "96": {
+    "desc": "Miscellaneous manufactured articles",
+    "value_2022": 115.937
+  },
+  "11": {
+    "desc": "Products of the milling industry; malt, starches, inulin, wheat gluten",
+    "value_2022": 84.148
+  },
+  "73": {
+    "desc": "Iron or steel articles",
+    "value_2022": 79.129
+  },
+  "29": {
+    "desc": "Organic chemicals",
+    "value_2022": 53.54
+  },
+  "71": {
+    "desc": "Natural, cultured pearls; precious, semi-precious stones; precious metals, metals clad with precious metal, and articles thereof; imitation jewellery; coin",
+    "value_2022": 39.368
+  },
+  "50": {
+    "desc": "Silk",
+    "value_2022": 9.683
+  },
+  "76": {
+    "desc": "Aluminium and articles thereof",
+    "value_2022": 7.677
+  }
+}

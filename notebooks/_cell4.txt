@@ -1,0 +1,58 @@
+# ── Figure 1 : Distribution de la variable cible ───────────────────────────
+fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+fig.suptitle('Figure 1 — Distribution Log-Return · Variable Cible Réelle',
+             fontsize=13, y=1.02, fontweight='bold')
+
+# 1a — Histogramme + fit normal
+ax = axes[0]
+h, e = lr_data['hist'], lr_data['edges']
+centers = [(e[i]+e[i+1])/2 for i in range(len(h))]
+ax.bar(centers, h, width=(e[1]-e[0]), alpha=0.65, color='#378ADD', edgecolor='white')
+mu, sigma = lr_data['mean'], lr_data['std']
+x = np.linspace(mu-4*sigma, mu+4*sigma, 300)
+ax.plot(x, stats.norm.pdf(x, mu, sigma), 'r-', lw=2.5,
+        label=f'N(μ={mu:.1f}%, σ={sigma:.1f}%)')
+ax.axvline(0, color='black', lw=1, linestyle='--', alpha=0.5, label='0%')
+ax.axvline(mu, color='orange', lw=2, linestyle=':', label=f'Moyenne={mu:.1f}%')
+ax.set_xlabel('Log-Return (%)'); ax.set_ylabel('Densité')
+ax.set_title(f'Distribution (n={lr_data["n"]:,})')
+ax.legend(fontsize=8)
+sw, p = stats.shapiro(y_val[:500])
+ax.text(0.97, 0.97, f'Shapiro-Wilk\nW={sw:.4f}\np={p:.4f}',
+        transform=ax.transAxes, va='top', ha='right', fontsize=8,
+        bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.9))
+
+# 1b — Q-Q Plot
+ax = axes[1]
+(osm, osr), (slope, intercept, r_val) = stats.probplot(y_val[:1000])
+ax.scatter(osm, osr, alpha=0.3, s=5, color='#378ADD')
+xl = np.array([osm.min(), osm.max()])
+ax.plot(xl, slope*xl+intercept, 'r-', lw=2.5,
+        label=f'Normale théorique (r²={r_val**2:.3f})')
+ax.set_xlabel('Quantiles théoriques'); ax.set_ylabel('Quantiles observés')
+ax.set_title('Q-Q Plot — Normalité'); ax.legend(fontsize=9)
+
+# 1c — Boxplot par année
+ax = axes[2]
+yrs = sorted(yearly_stats.keys())
+bxp_data = [dict(
+    med=yearly_stats[y]['q50'], q1=yearly_stats[y]['q25'],
+    q3=yearly_stats[y]['q75'], whislo=yearly_stats[y]['whislo'],
+    whishi=yearly_stats[y]['whishi'], fliers=[]) for y in yrs]
+bp = ax.bxp(bxp_data, patch_artist=True, showfliers=False,
+            medianprops=dict(color='red', lw=2))
+for patch, yr in zip(bp['boxes'], yrs):
+    patch.set_facecolor('#E24B4A' if yr=='2020' else '#378ADD')
+    patch.set_alpha(0.65)
+ax.set_xticklabels(yrs, rotation=45)
+ax.axhline(0, color='black', lw=1, linestyle='--')
+ax.set_xlabel('Année'); ax.set_ylabel('Log-Return (%)')
+ax.set_title('Par année · clip[-100,100]')
+if '2020' in yrs:
+    ax.annotate('COVID-19', xy=(yrs.index('2020')+1, -40),
+                fontsize=8, color='#E24B4A', ha='center', fontweight='bold')
+
+plt.tight_layout()
+plt.savefig('fig1_distribution.png', dpi=150, bbox_inches='tight')
+plt.show()
+print(f'✅ Figure 1 — μ={mu:.2f}% | σ={sigma:.2f}% | n={lr_data["n"]:,}')

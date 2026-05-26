@@ -1,0 +1,16 @@
+---
+## 3. Split temporel & baseline Ridge
+
+**Principe du TimeSeriesSplit :**
+```
+Fold 1 : Train [2018]          → Val [2019]
+Fold 2 : Train [2018-2019]     → Val [2020]
+Fold 3 : Train [2018-2020]     → Val [2021]
+Fold 4 : Train [2018-2021]     → Val [2022]
+  ↓
+Évaluation finale :
+  Train : 2018-2021 (2,443 obs)
+  Val   : 2022-2023 (1,267 obs)
+  Test  : 2024     (1,176 obs)
+```
+→ **Le modèle ne voit jamais le futur** pendant l'entraînement.

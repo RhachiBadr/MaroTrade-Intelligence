@@ -1,0 +1,52 @@
+# ── Figure 2 : Corrélation features vs cible ───────────────────────────────
+fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+fig.suptitle('Figure 2 — Analyse Features · Corrélations & Valeurs Manquantes',
+             fontsize=13, y=1.02, fontweight='bold')
+
+# 2a — Corrélation avec log_return
+ax = axes[0]
+ct_sorted = sorted(corr_target.items(), key=lambda x: x[1])
+feats_lbl = [FEAT_LABELS.get(k, k) for k, v in ct_sorted]
+vals_corr  = [v for k, v in ct_sorted]
+colors_c   = ['#E24B4A' if v < 0 else '#1D9E75' for v in vals_corr]
+ax.barh(range(len(ct_sorted)), vals_corr, color=colors_c, alpha=0.85)
+ax.set_yticks(range(len(ct_sorted)))
+ax.set_yticklabels(feats_lbl, fontsize=8)
+ax.axvline(0, color='black', lw=1)
+ax.set_xlabel('Corrélation de Pearson r')
+ax.set_title('Corrélation features vs log_return')
+for i, v in enumerate(vals_corr):
+    ax.text(v+(0.002 if v>=0 else -0.002), i,
+            f'{v:.3f}', va='center',
+            ha='left' if v>=0 else 'right', fontsize=7)
+ax.text(0.97, 0.03,
+        'Corrélations faibles (<0.1) = normal\npour données économiques.\nSignal dans le ranking (Spearman).',
+        transform=ax.transAxes, va='bottom', ha='right', fontsize=8,
+        bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.9))
+
+# 2b — Valeurs manquantes
+ax = axes[1]
+miss_items = [(FEAT_LABELS.get(k,k), v)
+              for k, v in sorted(miss_pct.items(), key=lambda x:-x[1]) if v > 0]
+if miss_items:
+    labels_m, vals_m = zip(*miss_items)
+    colors_m = ['#E24B4A' if v>30 else '#BA7517' if v>10 else '#1D9E75'
+                for v in vals_m]
+    ax.barh(range(len(labels_m)), vals_m, color=colors_m, alpha=0.85)
+    ax.set_yticks(range(len(labels_m)))
+    ax.set_yticklabels(labels_m, fontsize=8)
+    ax.axvline(10, color='orange', linestyle='--', lw=1.5, label='Seuil 10%')
+    ax.axvline(30, color='red', linestyle='--', lw=1.5, label='Seuil 30%')
+    ax.set_xlabel('% valeurs manquantes')
+    ax.set_title('Valeurs manquantes (imputées par médiane)')
+    ax.legend(fontsize=9)
+else:
+    ax.text(0.5, 0.5, '✅ 0 valeur manquante\naprès imputation',
+            ha='center', va='center', fontsize=14,
+            color='#1D9E75', fontweight='bold', transform=ax.transAxes)
+    ax.set_title('Valeurs manquantes')
+
+plt.tight_layout()
+plt.savefig('fig2_features.png', dpi=150, bbox_inches='tight')
+plt.show()
+print('✅ Figure 2 — Features analysées')

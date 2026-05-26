@@ -1,14 +1,37 @@
 """Module de service NLP open source.
 
-Ce package servira à substituer l'analyse Claude par un pipeline local.
-Version simplifiée pour démarrage rapide.
+ÉTAPE 3 : Remplace Claude Anthropic par pipeline NLP 100% open-source.
+
+Modules:
+  - spacy_extractor: Extraction entités
+  - transformers_classifier: Classification des alertes
+  - summarizer: Résumés et contenu français
+  - opensource_regulatory_analyzer: Orchestrateur principal
 """
 
 import logging
 from dataclasses import dataclass
 from typing import List, Optional
 
-# Imports différés pour éviter les téléchargements automatiques
+# Imports pour la nouvelle Étape 3
+try:
+    from .spacy_extractor import SpacyExtractor, ExtractedEntity
+    from .transformers_classifier import (
+        TransformersAlertClassifier,
+        AlertClassification,
+        ImpactCalculator
+    )
+    from .summarizer import AlertSummarizer, Summary, FrenchContentGenerator
+    from .opensource_regulatory_analyzer import (
+        OpenSourceRegulatoryAnalyzer,
+        RegulatoryAnalysis,
+    )
+    OPENSOURCE_NLP_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"Modules NLP open-source non disponibles: {e}")
+    OPENSOURCE_NLP_AVAILABLE = False
+
+# Pour compatibilité avec le code existant
 TRANSFORMERS_AVAILABLE = False
 
 
@@ -27,32 +50,41 @@ class NLPAnalysis:
     confiance: float
 
 
+# Alias pour RegulatoryAnalysis (compatible avec ancien code)
+RegulatoryAnalysis_ = NLPAnalysis
+
+
 class NLPAnalyzer:
     """Pipeline NLP local pour l'analyse réglementaire.
 
-    Version simplifiée : pas de téléchargement automatique de modèles.
-    Utilise des règles basiques pour commencer.
+    Version ÉTAPE 3 : utilise les modèles open-source transformers.
+    Pas de dépendance Anthropic Claude.
     """
 
-    def __init__(self, use_models: bool = False):
+    def __init__(self, use_models: bool = True):
         self.classifier = None
         self.summarizer = None
         self.embedder = None
         self.available = False
+        self.opensource_analyzer = None
 
-        if not use_models:
-            logging.info("NLP en mode basique (pas de modèles ML)")
-            return
-
-        # Imports différés seulement si demandé explicitement
-        try:
-            from transformers import pipeline
-            from sentence_transformers import SentenceTransformer
-            self.available = True
-            logging.info("NLP avec modèles ML disponible")
-        except ImportError:
-            logging.warning("Modèles ML non disponibles, mode basique activé")
-            self.available = False
+        # NOUVELLE ÉTAPE 3 : Initialiser l'analyseur open-source
+        if use_models and OPENSOURCE_NLP_AVAILABLE:
+            try:
+                logging.info("Initialisation du pipeline NLP open-source (Transformers + spaCy)...")
+                self.opensource_analyzer = OpenSourceRegulatoryAnalyzer(
+                    language="en",
+                    use_gpu=False,
+                    use_cache=True
+                )
+                self.available = True
+                logging.info("✅ NLP open-source initialisé avec succès")
+                return
+            except Exception as e:
+                logging.error(f"Erreur initialisation NLP open-source: {e}")
+        
+        # Fallback ancien code
+        logging.info("NLP en mode basique (pas de modèles ML)")
 
     def analyze(self, text: str, hs_code: str = "", target_countries: list = None) -> NLPAnalysis:
         pays = target_countries or []
@@ -113,4 +145,18 @@ class NLPAnalyzer:
         )
 
 
-__all__ = ["NLPAnalysis", "NLPAnalyzer"]
+__all__ = [
+    "NLPAnalysis",
+    "NLPAnalyzer",
+    # Modules ÉTAPE 3 open-source
+    "SpacyExtractor",
+    "ExtractedEntity",
+    "TransformersAlertClassifier",
+    "AlertClassification",
+    "ImpactCalculator",
+    "AlertSummarizer",
+    "Summary",
+    "FrenchContentGenerator",
+    "OpenSourceRegulatoryAnalyzer",
+    "RegulatoryAnalysis",
+]

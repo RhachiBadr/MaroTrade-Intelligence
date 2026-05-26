@@ -13,6 +13,9 @@ env/
 
 # Environment variables
 .env
+.env.*
+!.env.example
+docker.env
 
 # Streamlit
 .streamlit/secrets.toml
@@ -25,10 +28,22 @@ Thumbs.db
 .cache_marotrade/
 node_modules/
 .cache_c02/
+.pytest_cache/
+artifacts/
+figures/
+*.log
+*.tmp
+*.bak
+notebooks/.ipynb_checkpoints/
 package-lock.json
 package.json
 node_modules
 marotrade-frontend/node_modules/
+marotrade-frontend/.next/
+marotrade-frontend/out/
+marotrade-frontend/public/videos/*.mp4
+marotrade-frontend/public/videos/*.mov
+marotrade-frontend/public/videos/*.webm
 
 
 task.md

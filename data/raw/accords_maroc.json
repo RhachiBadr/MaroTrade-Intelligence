@@ -1,0 +1,102 @@
+{
+  "FRA": {
+    "accord": "Accord association UE",
+    "droits": 0.0,
+    "type": "ALE"
+  },
+  "DEU": {
+    "accord": "Accord association UE",
+    "droits": 0.0,
+    "type": "ALE"
+  },
+  "USA": {
+    "accord": "Accord libre-échange",
+    "droits": 0.0,
+    "type": "ALE"
+  },
+  "ESP": {
+    "accord": "Accord association UE",
+    "droits": 0.0,
+    "type": "ALE"
+  },
+  "ITA": {
+    "accord": "Accord association UE",
+    "droits": 0.0,
+    "type": "ALE"
+  },
+  "NLD": {
+    "accord": "Accord association UE",
+    "droits": 0.0,
+    "type": "ALE"
+  },
+  "BEL": {
+    "accord": "Accord association UE",
+    "droits": 0.0,
+    "type": "ALE"
+  },
+  "GBR": {
+    "accord": "Accord préférentiel",
+    "droits": 2.5,
+    "type": "PREF"
+  },
+  "CAN": {
+    "accord": "NPF standard",
+    "droits": 5.0,
+    "type": "NPF"
+  },
+  "JPN": {
+    "accord": "NPF standard",
+    "droits": 5.0,
+    "type": "NPF"
+  },
+  "SAU": {
+    "accord": "Accord GAFTA",
+    "droits": 0.0,
+    "type": "ALE"
+  },
+  "ARE": {
+    "accord": "Accord GAFTA",
+    "droits": 0.0,
+    "type": "ALE"
+  },
+  "QAT": {
+    "accord": "Accord GAFTA",
+    "droits": 0.0,
+    "type": "ALE"
+  },
+  "KWT": {
+    "accord": "Accord GAFTA",
+    "droits": 0.0,
+    "type": "ALE"
+  },
+  "CHN": {
+    "accord": "NPF standard",
+    "droits": 8.0,
+    "type": "NPF"
+  },
+  "KOR": {
+    "accord": "NPF standard",
+    "droits": 5.0,
+    "type": "NPF"
+  },
+  "SGP": {
+    "accord": "NPF standard",
+    "droits": 0.0,
+    "type": "NPF"
+  },
+  "AUS": {
+    "accord": "NPF standard",
+    "droits": 5.0,
+    "type": "NPF"
+  },
+  "NOR": {
+    "accord": "Accord AELE",
+    "droits": 0.0,
+    "type": "ALE"
+  },
+  "CHE": {
+    "accord": "Accord AELE",
+    "droits": 0.0,
+    "type": "ALE"
+  }
+}

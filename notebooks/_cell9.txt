@@ -1,0 +1,67 @@
+# ── Figure 3 : Benchmark comparatif ────────────────────────────────────────
+fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+fig.suptitle('Figure 3 — Benchmark Comparatif · RMSE · R² · Spearman Ranking',
+             fontsize=13, y=1.02, fontweight='bold')
+
+names     = MODELS_LIST
+val_rmse  = [bd['results'][m]['val_rmse']  for m in names]
+val_r2    = [bd['results'][m]['val_r2']    for m in names]
+val_sp    = [bd['results'][m]['val_spearman'] for m in names]
+colors_m  = [COLORS[m] for m in names]
+ci_half   = (bd['ci_rmse'][1] - bd['ci_rmse'][0]) / 2
+ci_half_sp= (bd['ci_sp'][1]   - bd['ci_sp'][0])   / 2
+
+# Val RMSE
+ax = axes[0]
+bars = ax.bar(names, val_rmse, color=colors_m, alpha=0.85, edgecolor='white', lw=1.5)
+ax.errorbar(names, val_rmse, yerr=[ci_half]*len(names), fmt='none',
+            color='black', capsize=5, capthick=2, elinewidth=2, label='IC 95% Bootstrap')
+for bar, val in zip(bars, val_rmse):
+    ax.text(bar.get_x()+bar.get_width()/2,
+            bar.get_height()+ci_half+0.3,
+            f'{val:.2f}', ha='center', fontsize=9, fontweight='bold')
+bi = names.index(best)
+ax.annotate(f'★ {best}', xy=(bi, val_rmse[bi]),
+            xytext=(bi, val_rmse[bi]+ci_half+4),
+            ha='center', fontsize=9, color='#BA7517', fontweight='bold',
+            arrowprops=dict(arrowstyle='->', color='#BA7517'))
+ax.set_title('Val RMSE ± IC 95% Bootstrap (↓ mieux)')
+ax.set_ylabel('RMSE (log-return %)')
+ax.legend(fontsize=9)
+
+# Val R²
+ax = axes[1]
+colors_r2 = ['#1D9E75' if v>=0 else '#E24B4A' for v in val_r2]
+bars = ax.bar(names, val_r2, color=colors_r2, alpha=0.85, edgecolor='white', lw=1.5)
+ax.axhline(0, color='black', lw=1.5, linestyle='--', alpha=0.5, label='R²=0 (nul)')
+for bar, val in zip(bars, val_r2):
+    ax.text(bar.get_x()+bar.get_width()/2,
+            val + (0.001 if val>=0 else -0.004),
+            f'{val:.4f}', ha='center', fontsize=9, fontweight='bold')
+ax.set_title('R² Validation
+(négatif = difficile à prédire en absolu, normal)')
+ax.set_ylabel('R² Score')
+ax.legend(fontsize=9)
+
+# Spearman Ranking
+ax = axes[2]
+colors_sp = ['#1D9E75' if v>0.15 else '#BA7517' if v>0.08 else '#E24B4A'
+             for v in val_sp]
+bars = ax.bar(names, val_sp, color=colors_sp, alpha=0.85, edgecolor='white', lw=1.5)
+ax.errorbar(names, val_sp, yerr=[ci_half_sp]*len(names), fmt='none',
+            color='black', capsize=5, capthick=2, elinewidth=2, label='IC 95% Bootstrap')
+ax.axhline(0, color='black', lw=1, linestyle='--')
+ax.axhline(0.15, color='green', lw=1.5, linestyle=':', label='Seuil 0.15')
+for bar, val in zip(bars, val_sp):
+    ax.text(bar.get_x()+bar.get_width()/2,
+            val+ci_half_sp+0.003,
+            f'{val:.4f}', ha='center', fontsize=9, fontweight='bold')
+ax.set_title('Spearman Ranking (↑ mieux)
+= signal classement marchés')
+ax.set_ylabel('Spearman ρ')
+ax.legend(fontsize=9)
+
+plt.tight_layout()
+plt.savefig('fig3_benchmark.png', dpi=150, bbox_inches='tight')
+plt.show()
+print('✅ Figure 3 — Benchmark comparatif')

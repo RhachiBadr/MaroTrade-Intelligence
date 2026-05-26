@@ -1,0 +1,18 @@
+---
+## 2. Feature Engineering — Explication des 18 features
+
+Toutes les features sont construites **uniquement depuis le passé** (pas de leakage) :
+
+| Catégorie | Features | Rôle |
+|---|---|---|
+| **Temporelles** | log_value, log_lag1, log_ma3, std3, growth_lag1, log_return_lag1, price_usd_kg | Mémoire de la série temporelle |
+| **Dérivées** | market_share, cagr_3y | Position relative + tendance long terme |
+| **Catégorielles** | hs_code_enc, partner_code_enc | Identité produit + pays |
+| **Accords** | accord_score, droits | Avantage tarifaire |
+| **World Bank** | wb_gdp_per_capita, wb_imports_pct_gdp, wb_available | Capacité d'import du pays |
+| **Risque/Distance** | ocde_risk_score, distance_km | Friction logistique + risque pays |
+
+**Transformations clés :**
+- `log1p(value_usd)` au lieu de `value_usd` brut → réduit l'effet des valeurs extrêmes (10 Mrd USD écrase tout sinon)
+- `RobustScaler` au lieu de `MinMaxScaler` → résistant aux outliers
+- `TimeSeriesSplit` au lieu de `KFold` → pas de data leakage temporel

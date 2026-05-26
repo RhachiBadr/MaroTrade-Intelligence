@@ -1,0 +1,13 @@
+---
+## 4. Benchmark des 4 modèles
+
+### Note sur les métriques
+
+> **R² négatif ≠ modèle inutile** pour notre cas d'usage.
+> Le R² mesure la capacité à prédire la valeur absolue du log-return.
+> Prédire avec précision la croissance économique est intrinsèquement difficile
+> (comparable à prédire des rendements financiers).
+>
+> **La métrique pertinente pour la PME est le Spearman ranking :** est-ce que
+> le modèle classe correctement les marchés du meilleur au moins bon ?
+> Un Spearman > 0.15 avec seulement 18 pays est un signal positif.

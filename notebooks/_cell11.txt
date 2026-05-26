@@ -1,0 +1,51 @@
+# ── Figure 4 : Tableau scientifique ────────────────────────────────────────
+fig, ax = plt.subplots(figsize=(18, 5))
+fig.suptitle('Figure 4 — Tableau Comparatif · Format Publication IEEE/Elsevier',
+             fontsize=13, fontweight='bold')
+ax.axis('off')
+
+headers = ['Modèle','CV RMSE\n(TSS 4-fold ± std)','Val RMSE',
+           'IC 95% Bootstrap\n(RMSE)','Val R²','Val Spearman ρ',
+           'Test RMSE','Test R²','Rang']
+table_data = []
+for rank, (name, res) in enumerate(
+    sorted(bd['results'].items(), key=lambda x: x[1]['val_rmse']), 1
+):
+    ci = f"[{bd['ci_rmse'][0]:.2f}, {bd['ci_rmse'][1]:.2f}]"
+    star = ' ★' if name == best else ''
+    table_data.append([
+        name+star,
+        f"{res['cv_rmse']:.2f} ± {res['cv_std']:.2f}",
+        f"{res['val_rmse']:.3f}",
+        ci,
+        f"{res['val_r2']:.4f}",
+        f"{res['val_spearman']:.4f}",
+        f"{res['test_rmse']:.3f}",
+        f"{res['test_r2']:.4f}",
+        f"#{rank}",
+    ])
+
+tbl = ax.table(cellText=table_data, colLabels=headers,
+               cellLoc='center', loc='center', bbox=[0,0,1,1])
+tbl.auto_set_font_size(False); tbl.set_fontsize(9)
+
+for (row, col), cell in tbl.get_celld().items():
+    if row == 0:
+        cell.set_facecolor('#2C3E50')
+        cell.set_text_props(color='white', fontweight='bold')
+        cell.set_height(0.22)
+    elif table_data[row-1][0].endswith(' ★'):
+        cell.set_facecolor('#E8F5E9')
+        cell.set_text_props(fontweight='bold', color='#1B5E20')
+    elif row % 2 == 0: cell.set_facecolor('#F5F5F5')
+    else:              cell.set_facecolor('white')
+    cell.set_edgecolor('#BDBDBD'); cell.set_linewidth(0.5)
+
+note = (f"★ Best model sur Val RMSE  |  Bootstrap n=1,000  |  TSS = TimeSeriesSplit  |  "
+        f"Val: {len(y_val):,} obs  |  Test: {len(y_test):,} obs  |  18 pays · 88 produits AG2 · 2018-2024  |  "
+        f"Target : log_return = log(V_{{N+1}}/V_N)×100, clip[-100,100]")
+fig.text(0.5, -0.04, note, ha='center', fontsize=8, color='gray', style='italic')
+
+plt.savefig('fig4_tableau.png', dpi=150, bbox_inches='tight')
+plt.show()
+print('✅ Figure 4 — Tableau publication')
