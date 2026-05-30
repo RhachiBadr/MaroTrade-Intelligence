@@ -48,8 +48,8 @@ export function ChartCard({
         <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
         {description && <p className="mt-0.5 text-xs text-text-muted">{description}</p>}
       </GlassCardHeader>
-      <GlassCardContent className="h-64 min-h-[256px] pt-2">
-        <ResponsiveContainer width="100%" height="100%" minHeight={240}>
+      <GlassCardContent className="pt-2">
+        <ResponsiveContainer width="100%" height={256}>
           {type === 'area' ? (
             <AreaChart data={data}>
               <defs>

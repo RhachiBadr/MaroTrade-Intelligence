@@ -1,209 +1,172 @@
-"""
-opensource_regulatory_analyzer.py — Remplacement de LLM Claude
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Orchestration des modèles open-source NLP pour remplacer Anthropic Claude.
-Pas de dépendance coûteuse - 100% modèles transformers open-source.
+"""Orchestrateur NLP open-source pour les alertes reglementaires.
 
-API compatible avec llm_regulatory_analyzer.LLMRegulatoryAnalyzer
+Ce module garde la structure compatible avec l'ancien analyseur, tout en
+branchant le classifieur RASFF XLM-RoBERTa fine-tune via
+TransformersAlertClassifier. spaCy, le summarizer et ImpactCalculator restent
+des complements du classifieur principal.
 """
 
-import os
-import json
 import hashlib
+import json
+import logging
+from dataclasses import asdict, dataclass
+from datetime import datetime
 from pathlib import Path
-from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 
 from services.nlp.spacy_extractor import SpacyExtractor
-from services.nlp.transformers_classifier import TransformersAlertClassifier, ImpactCalculator
 from services.nlp.summarizer import AlertSummarizer, FrenchContentGenerator
+from services.nlp.transformers_classifier import ImpactCalculator, TransformersAlertClassifier
 
 
-# ═══════════════════════════════════════════════════════════════
-# CONFIGURATION
-# ═══════════════════════════════════════════════════════════════
+logger = logging.getLogger(__name__)
 
 CACHE_DIR = Path(".cache_marotrade")
 CACHE_DIR.mkdir(exist_ok=True)
-CACHE_TTL_DAYS = 3  # Alertes mises en cache 3 jours
+CACHE_TTL_DAYS = 3
 
-# Contexte Maroc
 MAROC_CONTEXT = {
-    "main_products": [
-        "151590",  # Huile d'argan
-        "160413",  # Sardines
-        "080410",  # Dattes
-        "09102010", # Safran
-    ],
+    "main_products": ["151590", "160413", "080410", "09102010"],
     "main_markets": ["FRA", "DEU", "USA", "SAU", "ARE"],
     "main_organizations": ["ONSSA", "Douanes marocaines", "ASIDCOM"],
 }
 
 
-# ═══════════════════════════════════════════════════════════════
-# STRUCTURE DE SORTIE (compatible CClaude)
-# ═══════════════════════════════════════════════════════════════
-
 @dataclass
 class RegulatoryAnalysis:
-    """Résultat structuré de l'analyse d'une alerte réglementaire."""
+    """Resultat structure de l'analyse d'une alerte reglementaire."""
 
-    # Identification
-    titre_fr: str              # Titre reformulé en français
-    niveau: str                # CRITIQUE / ATTENTION / INFO
+    titre_fr: str
+    niveau: str
+    pays_concernes: list
+    produits: list
+    impact_score: float
+    resume_fr: str
+    impact_export: str
+    action_requise: str
+    date_vigueur: Optional[str]
+    source_fiable: bool
+    confiance: float
+    keywords: Optional[List[str]] = None
+    reasoning: str = ""
+    entities: Optional[List[Dict]] = None
+    category: str = ""
+    classification: str = ""
+    origin: str = ""
+    maroc_relevant: Optional[bool] = None
 
-    # Impact
-    pays_concernes: list       # Codes ISO3
-    produits: list             # Codes HS ou noms
-    impact_score: float        # 0–100
-
-    # Contenu
-    resume_fr: str             # Résumé 2–3 phrases
-    impact_export: str         # Impact concret
-    action_requise: str        # Actions précises
-
-    # Métadonnées
-    date_vigueur: Optional[str]  # YYYY-MM-DD ou None
-    source_fiable: bool        # Fiable ?
-    confiance: float           # 0–1
-
-
-# ═══════════════════════════════════════════════════════════════
-# MOTEUR D'ANALYSE OPEN-SOURCE
-# ═══════════════════════════════════════════════════════════════
 
 class OpenSourceRegulatoryAnalyzer:
-    """
-    Analyseur réglementaire 100% open-source.
-    
-    Remplace Claude par pipeline local:
-    1. spaCy : extraction entités (pays, produits, dates)
-    2. Transformers : classification (CRITIQUE/ATTENTION/INFO)
-    3. BART/mT5 : résumé et génération contenu
-    
-    API COMPATIBLE avec llm_regulatory_analyzer.LLMRegulatoryAnalyzer
-    """
+    """Pipeline local: spaCy + classifieur RASFF fine-tune + resume."""
 
     def __init__(
         self,
         language: str = "en",
         use_gpu: bool = False,
-        use_cache: bool = True
+        use_cache: bool = True,
     ):
-        """
-        Args:
-            language: "en" ou "fr"
-            use_gpu: Utiliser GPU (plus rapide mais consomme mémoire)
-            use_cache: Activer le cache (3 jours par défaut)
-        """
         self.language = language
         self.use_gpu = use_gpu
         self.use_cache = use_cache
-        
-        # Charger les modèles NLP
-        print("[NLP] Chargement des modèles open-source...")
+
+        print("[NLP] Chargement des modeles open-source...")
         self.extractor = SpacyExtractor(lang=language, use_transformers=False)
         self.classifier = TransformersAlertClassifier(use_gpu=use_gpu)
         self.summarizer = AlertSummarizer(language=language, use_gpu=use_gpu)
         self.impact_calc = ImpactCalculator()
-        
-        # Statistiques
+
         self._call_count = 0
         self._total_tokens = 0
         self._cache_hits = 0
-
-    # ───────────────────────────────────────────────────────────
-    # Analyse principale (API compatible)
-    # ───────────────────────────────────────────────────────────
 
     def analyze(
         self,
         text: str,
         hs_code: str = "",
         target_countries: List[str] = None,
+        category: str = "",
+        classification: str = "",
+        origin: str = "",
+        maroc_relevant: Optional[bool] = None,
         use_cache: bool = True,
     ) -> RegulatoryAnalysis:
+        """Analyse une alerte reglementaire.
+
+        Les metadonnees category, classification et origin sont transmises au
+        classifieur fine-tune. risk_decision n'est jamais utilise.
         """
-        Analyse un texte réglementaire (API compatible avec LLMRegulatoryAnalyzer).
-        
-        Args:
-            text:             Texte brut de l'alerte
-            hs_code:          Code HS du produit
-            target_countries: Codes ISO3 des pays cibles
-            use_cache:        Utiliser cache
-        
-        Returns:
-            RegulatoryAnalysis structuré
-        """
-        # Clé cache
+        target_countries = target_countries or []
         cache_key = hashlib.md5(
-            f"{text[:200]}{hs_code}{''.join(target_countries or [])}".encode()
+            (
+                f"{text[:200]}{hs_code}{''.join(target_countries)}"
+                f"{category}{classification}{origin}{maroc_relevant}"
+            ).encode("utf-8")
         ).hexdigest()[:12]
-        
-        # Vérifier cache
+
         if use_cache and self.use_cache:
             cached = self._cache_get(cache_key)
             if cached:
                 self._cache_hits += 1
                 return self._dict_to_analysis(cached)
-        
-        # ───────────────────────────────────────────────────
-        # PIPELINE ANALYSE
-        # ───────────────────────────────────────────────────
-        
-        # 1. Extraction d'entités (spaCy)
+
         entities = self.extractor.extract_entities(text)
+        entities_payload = [
+            {
+                "type": entity.type_,
+                "value": entity.value,
+                "start_char": entity.start_char,
+                "end_char": entity.end_char,
+                "confidence": entity.confidence,
+            }
+            for entity in entities
+        ]
+
         countries_found = self.extractor.extract_countries(text)
         hs_codes_found = self.extractor.extract_hs_codes(text)
         dates_found = self.extractor.extract_dates(text)
-        
-        # Enrichir avec les données utilisateur
+
         if hs_code and hs_code not in hs_codes_found:
             hs_codes_found.append(hs_code)
         if target_countries:
             countries_found.extend(target_countries)
             countries_found = list(set(countries_found))
-        
-        # 2. Classification (Transformers)
+
         context = {
             "hs_code": hs_code,
-            "target_countries": target_countries or []
+            "target_countries": target_countries,
         }
-        classification = self.classifier.classify(text, context=context)
-        
-        # 3. Calcul d'impact
+
+        logger.info("OpenSourceRegulatoryAnalyzer using fine-tuned classifier")
+        alert_classification = self.classifier.classify(
+            text,
+            category=category,
+            classification=classification,
+            origin=origin,
+            context=context,
+        )
+
         impact_data = self.impact_calc.calculate_export_impact(
-            impact_score=classification.impact_score,
+            impact_score=alert_classification.impact_score,
             target_countries=countries_found,
-            hs_codes=hs_codes_found
+            hs_codes=hs_codes_found,
         )
         final_impact_score = impact_data["combined_impact"]
-        
-        # 4. Résumé (BART/mT5)
+
         summary = self.summarizer.summarize(text)
-        
-        # 5. Génération contenu français
-        titre_fr = self._translate_title(text, classification.level)
+        titre_fr = self._translate_title(text, alert_classification.level)
         resume_fr = summary.short
-        action_requise = "\n".join(summary.action_items) if summary.action_items else "À déterminer"
+        action_requise = "\n".join(summary.action_items) if summary.action_items else "A determiner"
         impact_export = FrenchContentGenerator.generate_impact_summary(
             alert_title=titre_fr,
             countries=countries_found,
-            risk_level=classification.level,
-            products=hs_codes_found
+            risk_level=alert_classification.level,
+            products=hs_codes_found,
         )
-        
-        # 6. Déterminer date de vigueur
         date_vigueur = self._extract_date(dates_found) if dates_found else None
-        
-        # ───────────────────────────────────────────────────
-        # CONSTRUIRE RÉSULTAT
-        # ───────────────────────────────────────────────────
-        
+
         analysis = RegulatoryAnalysis(
             titre_fr=titre_fr,
-            niveau=classification.level,
+            niveau=alert_classification.level,
             pays_concernes=countries_found,
             produits=hs_codes_found,
             impact_score=final_impact_score,
@@ -211,133 +174,105 @@ class OpenSourceRegulatoryAnalyzer:
             impact_export=impact_export,
             action_requise=action_requise,
             date_vigueur=date_vigueur,
-            source_fiable=True,  # Pour open-source : toujours fiable
-            confiance=classification.confidence,
+            source_fiable=True,
+            confiance=alert_classification.confidence,
+            keywords=alert_classification.keywords,
+            reasoning=alert_classification.reasoning,
+            entities=entities_payload,
+            category=category,
+            classification=classification,
+            origin=origin,
+            maroc_relevant=maroc_relevant,
         )
-        
-        # Sauvegarder en cache
+
         if use_cache and self.use_cache:
             self._cache_set(cache_key, asdict(analysis))
-        
+
         self._call_count += 1
+        logger.info("OpenSourceRegulatoryAnalyzer analysis completed")
         return analysis
 
-    # ───────────────────────────────────────────────────────
-    # Méthodes utilitaires
-    # ───────────────────────────────────────────────────────
-
     def _translate_title(self, text: str, level: str) -> str:
-        """Génère un titre français concis."""
-        # Extraire le premier X caractères ou première phrase
-        sentences = text.split(".")
-        if sentences:
-            first_line = sentences[0][:100].strip()
-        else:
-            first_line = text[:100].strip()
-        
-        # Ajouter l'emoji de niveau
-        level_emoji = {
-            "CRITIQUE": "🔴",
-            "ATTENTION": "🟡",
-            "INFO": "🟢"
-        }
-        
-        return f"{level_emoji.get(level, '•')} {first_line}"
+        """Genere un titre francais concis."""
+        first_sentence = (text.split(".")[0] if text else "").strip()
+        first_sentence = first_sentence[:100] or "Alerte reglementaire"
+        return f"[{level}] {first_sentence}"
 
     def _extract_date(self, dates: List[str]) -> Optional[str]:
-        """Extrait une date au format YYYY-MM-DD."""
+        """Extrait une date deja normalisee au format YYYY-MM-DD."""
         if not dates:
             return None
-        
-        # Prendre la première date trouvée
-        date_str = dates[0]
-        
-        # Tenter de parser (simple pattern)
-        import re
-        match = re.search(r"(\d{4})-(\d{2})-(\d{2})", date_str)
-        if match:
-            return date_str
-        
-        # Format alternatif : "June 15, 2026" → "2026-06-15"
-        # (implémentation simplifiée)
-        return None
 
-    def upgrade_regulatory_watch(
-        self,
-        alerts: List[Dict]
-    ) -> List[RegulatoryAnalysis]:
-        """
-        Analyse un batch d'alertes brutes de regulatory_watch.py
-        et retourne des alertes enrichies.
-        
-        Utile pour :
-        - Remplacer LLMRegulatoryAnalyzer.upgrade_regulatory_watch()
-        - Traiter les flux RSS
-        
-        Args:
-            alerts: Liste de dicts {titre, description, lien, ...}
-        
-        Returns:
-            Liste d'analyses enrichies
-        """
+        import re
+
+        date_str = dates[0]
+        match = re.search(r"(\d{4})-(\d{2})-(\d{2})", date_str)
+        return date_str if match else None
+
+    def upgrade_regulatory_watch(self, alerts: List[Dict]) -> List[RegulatoryAnalysis]:
+        """Analyse un batch d'alertes brutes de regulatory_watch.py."""
         results = []
         for alert in alerts:
-            text = f"{alert.get('titre', '')} {alert.get('description', '')}"
+            text = f"{alert.get('titre', '')} {alert.get('resume', alert.get('description', ''))}"
             analysis = self.analyze(
                 text=text,
-                hs_code=alert.get('hs_code', ''),
-                target_countries=alert.get('target_countries', [])
+                hs_code=alert.get("hs_code", ""),
+                target_countries=alert.get("target_countries", []),
+                category=alert.get("category", ""),
+                classification=alert.get("classification", ""),
+                origin=alert.get("origin", ""),
+                maroc_relevant=alert.get("maroc_relevant"),
             )
             results.append(analysis)
-        
         return results
 
-    # ───────────────────────────────────────────────────────
-    # Cache
-    # ───────────────────────────────────────────────────────
-
     def _cache_get(self, key: str) -> Optional[Dict]:
-        """Récupère une entrée du cache."""
+        """Recupere une entree du cache."""
         cache_file = CACHE_DIR / f"nlp_{key}.json"
-        
         if not cache_file.exists():
             return None
-        
-        # Vérifier TTL
+
         age = (datetime.now() - datetime.fromtimestamp(cache_file.stat().st_mtime)).days
         if age > CACHE_TTL_DAYS:
-            cache_file.unlink()  # Supprimer fichier expiré
+            cache_file.unlink()
             return None
-        
+
         try:
-            with open(cache_file) as f:
+            with open(cache_file, encoding="utf-8") as f:
                 return json.load(f)
-        except:
+        except Exception:
             return None
 
     def _cache_set(self, key: str, data: Dict):
-        """Sauvegarde une entrée en cache."""
+        """Sauvegarde une entree en cache."""
         cache_file = CACHE_DIR / f"nlp_{key}.json"
         try:
-            with open(cache_file, "w") as f:
-                json.dump(data, f, indent=2, default=str)
-        except Exception as e:
-            print(f"Cache write error: {e}")
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, default=str, ensure_ascii=False)
+        except Exception as exc:
+            logger.warning("Cache write error: %s", exc)
 
     def _dict_to_analysis(self, data: Dict) -> RegulatoryAnalysis:
         """Convertit un dict en RegulatoryAnalysis."""
         return RegulatoryAnalysis(
-            titre_fr=data.get("titre_fr"),
-            niveau=data.get("niveau"),
+            titre_fr=data.get("titre_fr", ""),
+            niveau=data.get("niveau", "INFO"),
             pays_concernes=data.get("pays_concernes", []),
             produits=data.get("produits", []),
             impact_score=data.get("impact_score", 0),
-            resume_fr=data.get("resume_fr"),
-            impact_export=data.get("impact_export"),
-            action_requise=data.get("action_requise"),
+            resume_fr=data.get("resume_fr", ""),
+            impact_export=data.get("impact_export", ""),
+            action_requise=data.get("action_requise", ""),
             date_vigueur=data.get("date_vigueur"),
             source_fiable=data.get("source_fiable", True),
-            confiance=data.get("confiance", 0.8),
+            confiance=data.get("confiance", 0.0),
+            keywords=data.get("keywords"),
+            reasoning=data.get("reasoning", ""),
+            entities=data.get("entities"),
+            category=data.get("category", ""),
+            classification=data.get("classification", ""),
+            origin=data.get("origin", ""),
+            maroc_relevant=data.get("maroc_relevant"),
         )
 
     @property
@@ -346,53 +281,29 @@ class OpenSourceRegulatoryAnalyzer:
         return {
             "calls": self._call_count,
             "cache_hits": self._cache_hits,
-            "tokens_saved": self._cache_hits * 500,  # Estimation
+            "tokens_saved": self._cache_hits * 500,
             "cache_hit_rate": self._cache_hits / max(1, self._call_count),
         }
 
 
-# ═══════════════════════════════════════════════════════════════
-# TEST
-# ═══════════════════════════════════════════════════════════════
-
 if __name__ == "__main__":
-    print("🔧 Initialisation du moteur NLP open-source...")
+    logging.basicConfig(level=logging.INFO)
     analyzer = OpenSourceRegulatoryAnalyzer(language="en", use_gpu=False)
-    
-    # Texte de test
-    test_alert = """
-    FDA URGENT ALERT: Sardine Products Recall
-    
-    All sardine products from Morocco (HS Code 160413) with 
-    production dates between May 1-15, 2026 must be withdrawn from 
-    shelves immediately. Contamination with Clostridium botulinum 
-    suspected. Consumers should not consume. Health risk: CRITICAL.
-    
-    Immediate notification required to FDA Office of Regulatory Affairs
-    before June 1, 2026. All importers and distributors in USA and Canada
-    are affected.
-    """
-    
-    print("\n📝 Analyse de l'alerte...")
+
+    test_alert = (
+        "Salmonella spp. in sesame seeds from Nigeria. Border rejection "
+        "notification for nuts, nut products and seeds."
+    )
     result = analyzer.analyze(
         text=test_alert,
-        hs_code="160413",
-        target_countries=["USA", "CAN"]
+        category="nuts, nut products and seeds",
+        classification="border rejection notification",
+        origin="Nigeria",
+        maroc_relevant=True,
     )
-    
-    print(f"\n✅ Résultat de l'analyse:")
-    print(f"  Titre: {result.titre_fr}")
-    print(f"  Niveau: {result.niveau}")
-    print(f"  Impact: {result.impact_score:.1f}/100")
-    print(f"  Pays: {', '.join(result.pays_concernes)}")
-    print(f"  Produits: {', '.join(result.produits)}")
-    print(f"  Résumé: {result.resume_fr}")
-    print(f"  Confiance: {result.confiance:.2f}")
-    
-    print(f"\n📊 Statistiques:")
-    stats = analyzer.stats
-    for k, v in stats.items():
-        if isinstance(v, float):
-            print(f"  {k}: {v:.2f}")
-        else:
-            print(f"  {k}: {v}")
+
+    print(f"Niveau: {result.niveau}")
+    print(f"Impact: {result.impact_score:.1f}/100")
+    print(f"Confiance: {result.confiance:.2f}")
+    print(f"Keywords: {result.keywords}")
+    print(f"Reasoning: {result.reasoning}")

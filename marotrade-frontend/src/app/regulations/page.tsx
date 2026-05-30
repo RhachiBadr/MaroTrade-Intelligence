@@ -1,19 +1,31 @@
 'use client'
 import { useState } from 'react'
 import { AlertCard } from '@/components/molecules/AlertCard'
+import { useRegulatoryAlerts } from '@/lib/api'
 import { MOCK_ALERTS } from '@/lib/mock-data'
 import type { AlertLevel } from '@/types'
-import { Download, ShieldCheck, Sparkles, Filter } from 'lucide-react'
+import { Download, ShieldCheck, Sparkles, Filter, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PageContainer, PageHeader } from '@/components/ui/page-shell'
 import { Button } from '@/components/ui/button'
+import { useAnalysisStore } from '@/store/analysis'
 
 const LEVELS: AlertLevel[] = ['CRITIQUE', 'ATTENTION', 'INFO']
 
 export default function RegulationsPage() {
+  const params = useAnalysisStore((s) => s.params)
+  const results = useAnalysisStore((s) => s.results)
   const [levelFilter, setLevelFilter] = useState<AlertLevel[]>(['CRITIQUE', 'ATTENTION', 'INFO'])
 
-  const filtered = MOCK_ALERTS.filter(a => levelFilter.includes(a.niveau))
+  const hsCode = params?.hs_code || '151590'
+  const productName = params?.product_name || 'Huile argan'
+  const targetCountries = results.length > 0
+    ? results.slice(0, 5).map((r) => r.country.code)
+    : ['FRA']
+
+  const { data: liveAlerts, isFetching, isError, refetch } = useRegulatoryAlerts(hsCode, productName, targetCountries)
+  const alerts = liveAlerts?.length ? liveAlerts : MOCK_ALERTS
+  const filtered = alerts.filter(a => levelFilter.includes(a.niveau))
   const critique = filtered.filter(a => a.niveau === 'CRITIQUE')
   const attention = filtered.filter(a => a.niveau === 'ATTENTION')
   const info = filtered.filter(a => a.niveau === 'INFO')
@@ -21,11 +33,20 @@ export default function RegulationsPage() {
   const toggleLevel = (l: AlertLevel) =>
     setLevelFilter(prev => prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l])
 
-  const llmAlerts = MOCK_ALERTS.filter(a => a.llm_enhanced)
+  const llmAlerts = alerts.filter(a => a.llm_enhanced || a.nlp_enhanced)
 
   function exportCSV() {
-    const rows = [['Niveau', 'Titre', 'Source', 'Date', 'Impact', 'Action']]
-    MOCK_ALERTS.forEach(a => rows.push([a.niveau, a.titre, a.source, a.date, String(a.score_impact), a.action]))
+    const rows = [['Niveau', 'Titre', 'Source', 'Date', 'Impact', 'Confiance', 'NLP', 'Action']]
+    alerts.forEach(a => rows.push([
+      a.niveau,
+      a.titre,
+      a.source,
+      a.date,
+      String(a.impact_score ?? a.score_impact),
+      String(a.confidence ?? ''),
+      String(Boolean(a.nlp_enhanced)),
+      a.action,
+    ]))
     const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
@@ -38,12 +59,27 @@ export default function RegulationsPage() {
         title="Veille réglementaire"
         description="Sources : EUR-Lex, RASFF, OMC, FDA — filtrez par niveau de criticité."
         actions={
-          <Button type="button" variant="secondary" onClick={exportCSV} className="gap-2">
-            <Download className="h-4 w-4" />
-            Exporter CSV
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" onClick={() => refetch()} className="gap-2" disabled={isFetching}>
+              <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
+              Actualiser
+            </Button>
+            <Button type="button" variant="secondary" onClick={exportCSV} className="gap-2">
+              <Download className="h-4 w-4" />
+              Exporter CSV
+            </Button>
+          </div>
         }
       />
+
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-xs font-medium text-text-muted">
+        <span className="font-semibold text-text-primary">{alerts.length} alertes</span>
+        <span>Produit : {productName}</span>
+        <span>HS {hsCode}</span>
+        <span>Marchés : {targetCountries.join(', ')}</span>
+        {isFetching && <span className="text-primary">Synchronisation en cours...</span>}
+        {isError && <span className="text-warning">API indisponible, données de démonstration affichées.</span>}
+      </div>
 
       {/* LLM Brief */}
       {llmAlerts.length > 0 && (
@@ -58,13 +94,11 @@ export default function RegulationsPage() {
                 <Sparkles className="w-3 h-3" />
                 Brief Exécutif IA
               </div>
-              <span className="text-xs font-medium text-text-muted">Analyse assistée (Claude / pipeline)</span>
+              <span className="text-xs font-medium text-text-muted">Analyse assistée par le pipeline NLP local</span>
             </div>
 
             <p className="text-base font-normal leading-relaxed text-text-secondary">
-              <span className="font-semibold text-text-primary">Priorité stratégique :</span> La certification Halal SFDA (impact 95/100) bloque toute exportation alimentaire vers l&apos;Arabie Saoudite — à traiter en premier.
-              Le règlement EUDR anti-déforestation nécessite une traçabilité géographique des parcelles avant janvier 2025.
-              Côté USA, l&apos;enregistrement FDA (FSMA) est obligatoire et gratuit — à effectuer dès maintenant pour sécuriser vos flux.
+              <span className="font-semibold text-text-primary">Priorité stratégique :</span> {llmAlerts[0]?.brief_executif || llmAlerts[0]?.reasoning || llmAlerts[0]?.resume_fr || 'Les alertes critiques sont enrichies par le modèle NLP local avec score d’impact, confiance et recommandations actionnables.'}
             </p>
           </div>
         </div>
@@ -88,7 +122,7 @@ export default function RegulationsPage() {
                         : 'bg-primary-600 text-white border-primary-600 shadow-lg shadow-primary-600/20'
                     : 'bg-surface border-border text-text-muted hover:border-text-secondary'
                 )}>
-                {l} ({MOCK_ALERTS.filter(a => a.niveau === l).length})
+                {l} ({alerts.filter(a => a.niveau === l).length})
               </button>
             ))}
           </div>

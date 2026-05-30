@@ -14,11 +14,17 @@ import feedparser
 import requests
 import json
 import hashlib
+import logging
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 import re
+
+from services.watch.sources import RASFFStructuredClient
+
+
+logger = logging.getLogger(__name__)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -39,6 +45,50 @@ LEVEL_COLORS = {
     LEVEL_WARNING:  "#BA7517",
     LEVEL_INFO:     "#1D9E75",
 }
+
+GENERIC_PRODUCT_TERMS = {
+    "fresh",
+    "food",
+    "foods",
+    "alimentaire",
+    "produit",
+    "produits",
+    "export",
+    "import",
+}
+
+
+def _product_keywords(hs_code: str, product_name: str = "") -> list:
+    keywords = list(HS_KEYWORDS.get(hs_code, []))
+    for token in re.findall(r"\w{3,}", (product_name or "").lower()):
+        if token not in GENERIC_PRODUCT_TERMS:
+            keywords.append(token)
+    return list(dict.fromkeys(keywords))
+
+
+def _matches_product(alert: dict, hs_code: str, product_name: str = "") -> bool:
+    keywords = _product_keywords(hs_code, product_name)
+    if not keywords:
+        return True
+
+    alert_text = " ".join(
+        str(alert.get(field, "") or "")
+        for field in ["titre", "resume", "category", "classification", "origin", "produits"]
+    ).lower()
+    alert_tokens = set(re.findall(r"\w{3,}", alert_text))
+    for keyword in keywords:
+        normalized_keyword = keyword.lower().strip()
+        if not normalized_keyword:
+            continue
+        if " " in normalized_keyword:
+            if normalized_keyword in alert_text:
+                return True
+        elif len(normalized_keyword) <= 4:
+            if normalized_keyword in alert_tokens:
+                return True
+        elif normalized_keyword in alert_text:
+            return True
+    return False
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -259,7 +309,7 @@ KEYWORDS_PERTINENTS = [
 HS_KEYWORDS = {
     "151590": ["argan", "huile végétale", "vegetable oil", "huile"],
     "160413": ["sardine", "thon", "conserve", "canned fish", "poisson"],
-    "080410": ["datte", "date", "palm fruit"],
+    "080410": ["datte", "dattes", "dates", "palm fruit"],
     "070200": ["tomate", "tomato"],
     "520811": ["textile", "coton", "cotton"],
 }
@@ -283,7 +333,13 @@ def fetch_rss_alerts(source_name: str, source_config: dict) -> list:
 
     alerts = []
     try:
-        feed = feedparser.parse(source_config["url"])
+        response = requests.get(
+            source_config["url"],
+            timeout=15,
+            headers={"User-Agent": "MaroTrade-Intelligence/1.0"},
+        )
+        response.raise_for_status()
+        feed = feedparser.parse(response.text)
         for entry in feed.entries[:20]:  # Max 20 derniers articles
             title   = entry.get("title", "")
             summary = entry.get("summary", entry.get("description", ""))
@@ -362,7 +418,7 @@ def _estimate_impact_score(text: str) -> float:
 # MOTEUR DE SCORING ET FILTRAGE
 # ═══════════════════════════════════════════════════════════════
 
-def score_relevance(alert: dict, hs_code: str, target_countries: list) -> float:
+def score_relevance(alert: dict, hs_code: str, target_countries: list, product_name: str = "") -> float:
     """
     Calcule la pertinence d'une alerte pour un produit et des marchés cibles.
 
@@ -385,10 +441,14 @@ def score_relevance(alert: dict, hs_code: str, target_countries: list) -> float:
         score *= 1.4
 
     # Bonus si le produit est explicitement mentionné
-    hs_kws = HS_KEYWORDS.get(hs_code, [])
-    alert_text = (alert.get("titre", "") + " " + alert.get("resume", "")).lower()
-    if any(kw in alert_text for kw in hs_kws):
+    product_match = _matches_product(alert, hs_code, product_name)
+    alert["product_match"] = bool(product_match)
+    if product_match:
         score *= 1.3
+    elif alert.get("live") or alert.get("structured"):
+        score *= 0.45
+    else:
+        score *= 0.75
 
     # Bonus urgence : alertes récentes
     try:
@@ -400,6 +460,9 @@ def score_relevance(alert: dict, hs_code: str, target_countries: list) -> float:
             score *= 1.1
     except Exception:
         pass
+
+    if not product_match and (alert.get("live") or alert.get("structured")):
+        score = min(score, 44.0)
 
     return min(score, 100.0)
 
@@ -414,6 +477,288 @@ class RegulatoryWatchEngine:
     Collecte, filtre et classe les alertes réglementaires
     pertinentes pour un produit et des marchés cibles donnés.
     """
+
+    def __init__(self, use_nlp: bool = True):
+        self.use_nlp = use_nlp
+        self.nlp_analyzer = None
+        self.rasff_client = RASFFStructuredClient()
+
+        if not self.use_nlp:
+            return
+
+        try:
+            from services.nlp import NLPAnalyzer
+
+            self.nlp_analyzer = NLPAnalyzer(use_models=True)
+        except Exception as exc:
+            logger.exception("NLPAnalyzer initialization failed: %s", exc)
+            self.nlp_analyzer = None
+
+    @staticmethod
+    def _as_text(value) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, list):
+            return ", ".join(str(item) for item in value if item)
+        return str(value)
+
+    def _normalize_alert(self, alert: dict) -> dict:
+        normalized = dict(alert or {})
+
+        titre = self._as_text(normalized.get("titre") or normalized.get("title"))
+        resume = self._as_text(normalized.get("resume") or normalized.get("summary"))
+        niveau = normalized.get("niveau") or normalized.get("level") or LEVEL_INFO
+        pays = normalized.get("pays", "")
+        pays_nom = normalized.get("pays_nom") or self._as_text(pays)
+        origin = normalized.get("origin", self._as_text(pays))
+        confidence = normalized.get("confidence", normalized.get("confiance", 0.0))
+        impact_score = normalized.get(
+            "impact_score",
+            normalized.get("score_impact", normalized.get("relevance", 0.0)),
+        )
+
+        normalized.setdefault(
+            "id",
+            hashlib.md5(f"{titre}|{resume}|{normalized.get('source', '')}".encode()).hexdigest()[:12],
+        )
+        normalized["titre"] = titre
+        normalized["titre_fr"] = normalized.get("titre_fr") or titre
+        normalized["niveau"] = niveau
+        normalized["level"] = normalized.get("level") or niveau
+        normalized["source"] = normalized.get("source", "")
+        normalized["pays"] = pays
+        normalized["pays_nom"] = pays_nom
+        normalized["date"] = normalized.get("date") or datetime.now().strftime("%Y-%m-%d")
+        normalized["resume"] = resume
+        normalized["resume_fr"] = normalized.get("resume_fr") or resume
+        normalized["summary"] = normalized.get("summary") or resume
+        normalized["action"] = normalized.get("action") or normalized.get("action_requise", "")
+        normalized["url"] = normalized.get("url", "")
+        normalized["score_impact"] = impact_score
+        normalized["impact_score"] = impact_score
+        normalized["confidence"] = confidence
+        normalized["confiance"] = normalized.get("confiance", confidence)
+        normalized["entities"] = normalized.get("entities") or {}
+        normalized["keywords"] = normalized.get("keywords") or []
+        normalized["reasoning"] = normalized.get("reasoning", "")
+        normalized["category"] = normalized.get("category", "")
+        normalized["classification"] = normalized.get("classification", "")
+        normalized["origin"] = origin
+        normalized["maroc_relevant"] = normalized.get("maroc_relevant", None)
+        normalized.setdefault("nlp_enhanced", False)
+        normalized.setdefault("llm_enhanced", False)
+
+        return normalized
+
+    def _calibrate_alert_level(
+        self,
+        alert: dict,
+        predicted_level: str,
+        confidence: float,
+        impact_score: float,
+    ) -> tuple[str, str]:
+        """Combine NLP output with source metadata and export relevance."""
+        original_level = alert.get("niveau") or alert.get("level") or LEVEL_INFO
+        classification = self._as_text(alert.get("classification")).lower()
+        relevance = float(alert.get("relevance", alert.get("score_impact", 0)) or 0)
+        source = self._as_text(alert.get("source")).upper()
+        text = f"{alert.get('titre', '')} {alert.get('resume', '')}".lower()
+        product_match = alert.get("product_match")
+        live_alert = bool(alert.get("live") or alert.get("structured"))
+
+        severe_hazard = any(
+            keyword in text
+            for keyword in [
+                "salmonella",
+                "listeria",
+                "aflatoxin",
+                "botulinum",
+                "e. coli",
+                "mercury",
+                "cadmium",
+            ]
+        )
+        formal_block = any(
+            keyword in classification
+            for keyword in ["border rejection", "alert notification", "recall", "withdrawal"]
+        )
+        informational = any(
+            keyword in classification
+            for keyword in ["information notification", "follow-up", "attention"]
+        )
+
+        calibrated = predicted_level or original_level
+        reasons = [
+            f"NLP={predicted_level}",
+            f"source={source or 'N/A'}",
+            f"relevance={relevance:.0f}",
+            f"confidence={confidence:.2f}",
+        ]
+
+        if relevance < 30:
+            calibrated = LEVEL_INFO
+            reasons.append("downgraded: faible pertinence produit/marche")
+        elif product_match is False and live_alert and calibrated == LEVEL_CRITICAL:
+            calibrated = LEVEL_WARNING
+            reasons.append("downgraded: alerte temps reel hors produit")
+        elif relevance < 55 and calibrated == LEVEL_CRITICAL and not alert.get("maroc_relevant"):
+            calibrated = LEVEL_WARNING
+            reasons.append("downgraded: critique NLP mais pertinence export moderee")
+
+        if informational and calibrated == LEVEL_CRITICAL and not (severe_hazard and relevance >= 55):
+            calibrated = LEVEL_WARNING
+            reasons.append("downgraded: notification informative RASFF")
+
+        if formal_block and severe_hazard and relevance >= 55 and confidence >= 0.70:
+            calibrated = LEVEL_CRITICAL
+            reasons.append("confirmed: danger sanitaire + action frontiere/rappel")
+        elif impact_score < 45 and calibrated == LEVEL_CRITICAL:
+            calibrated = LEVEL_WARNING
+            reasons.append("downgraded: impact calcule sous seuil critique")
+
+        return calibrated, "; ".join(reasons)
+
+    def _enrich_alerts_with_nlp(
+        self,
+        alerts: list,
+        hs_code: str,
+        target_countries: list,
+    ) -> list:
+        logger.info("RegulatoryWatchEngine enriching alerts with NLPAnalyzer")
+
+        if not self.nlp_analyzer:
+            calibrated_alerts = []
+            for alert in alerts:
+                normalized = self._normalize_alert(alert)
+                confidence = normalized.get("confidence") or 0.35
+                impact_score = normalized.get("impact_score") or normalized.get("score_impact") or 0.0
+                raw_level = normalized.get("niveau", LEVEL_INFO)
+                level, calibration_reason = self._calibrate_alert_level(
+                    normalized,
+                    raw_level,
+                    confidence,
+                    impact_score,
+                )
+                normalized.update(
+                    {
+                        "niveau": level,
+                        "level": level,
+                        "raw_nlp_level": raw_level,
+                        "calibration_reason": calibration_reason,
+                        "confidence": confidence,
+                        "confiance": confidence,
+                        "reasoning": calibration_reason,
+                    }
+                )
+                calibrated_alerts.append(normalized)
+            return calibrated_alerts
+
+        enriched_alerts = []
+        for alert in alerts:
+            normalized = self._normalize_alert(alert)
+            alert_id = normalized.get("id")
+
+            try:
+                text = " ".join(
+                    part for part in [normalized.get("titre", ""), normalized.get("resume", "")]
+                    if part
+                ).strip()
+                category = normalized.get("category", "")
+                classification = normalized.get("classification", "")
+                origin = normalized.get("origin", normalized.get("pays", ""))
+                maroc_relevant = normalized.get("maroc_relevant", None)
+
+                result = self.nlp_analyzer.analyze(
+                    text=text,
+                    category=category,
+                    classification=classification,
+                    origin=self._as_text(origin),
+                    maroc_relevant=maroc_relevant,
+                    hs_code=hs_code,
+                    target_countries=target_countries,
+                )
+
+                raw_niveau = result.get("niveau", normalized.get("niveau", LEVEL_INFO))
+                confidence = result.get("confidence", result.get("confiance", normalized.get("confidence", 0.0)))
+                impact_score = result.get("impact_score", normalized.get("impact_score", 0.0))
+                niveau, calibration_reason = self._calibrate_alert_level(
+                    normalized,
+                    raw_niveau,
+                    confidence,
+                    impact_score,
+                )
+                reasoning = result.get("reasoning") or normalized.get("reasoning", "")
+                if calibration_reason:
+                    reasoning = f"{reasoning} Calibration: {calibration_reason}".strip()
+
+                normalized.update(
+                    {
+                        "niveau": niveau,
+                        "level": niveau,
+                        "raw_nlp_level": raw_niveau,
+                        "calibration_reason": calibration_reason,
+                        "confidence": confidence,
+                        "confiance": result.get("confiance", confidence),
+                        "impact_score": impact_score,
+                        "score_impact": impact_score,
+                        "resume_fr": result.get("resume_fr") or result.get("summary") or normalized.get("resume_fr", ""),
+                        "summary": result.get("summary") or normalized.get("summary", ""),
+                        "entities": result.get("entities") or normalized.get("entities", {}),
+                        "keywords": result.get("keywords") or normalized.get("keywords", []),
+                        "reasoning": reasoning,
+                        "category": result.get("category", category),
+                        "classification": result.get("classification", classification),
+                        "origin": result.get("origin", self._as_text(origin)),
+                        "maroc_relevant": result.get("maroc_relevant", maroc_relevant),
+                        "nlp_enhanced": True,
+                        "llm_enhanced": True,
+                    }
+                )
+                logger.info("NLP analysis completed for alert %s", alert_id)
+
+            except Exception as exc:
+                fallback_level = normalized.get("niveau") or LEVEL_INFO
+                normalized.update(
+                    {
+                        "niveau": fallback_level,
+                        "level": normalized.get("level") or fallback_level,
+                        "confidence": normalized.get("confidence") or 0.2,
+                        "confiance": normalized.get("confiance") or 0.2,
+                        "nlp_enhanced": False,
+                        "llm_enhanced": False,
+                    }
+                )
+                logger.exception("NLP analysis failed for alert %s: %s", alert_id, exc)
+
+            enriched_alerts.append(normalized)
+
+        return enriched_alerts
+
+    def _fetch_structured_rasff_alerts(self, limit: int = 30) -> list:
+        """Fetch recent structured RASFF alerts with metadata for the NLP model."""
+        try:
+            logger.info("RegulatoryWatchEngine fetching structured RASFF alerts")
+            alerts = self.rasff_client.fetch_latest(max_items=limit, use_cache=True)
+            logger.info("Structured RASFF fetch returned %s alert(s)", len(alerts))
+            return alerts
+        except Exception as exc:
+            logger.exception("Structured RASFF fetch failed: %s", exc)
+            return []
+
+    def _deduplicate_alerts(self, alerts: list) -> list:
+        """Remove duplicates across static rules, structured sources, and RSS."""
+        seen = set()
+        unique_alerts = []
+        for alert in alerts:
+            title = self._as_text(alert.get("titre") or alert.get("title")).lower().strip()
+            date = self._as_text(alert.get("date"))[:10]
+            source = self._as_text(alert.get("source")).lower().strip()
+            key = alert.get("id") or hashlib.md5(f"{source}|{date}|{title}".encode("utf-8")).hexdigest()
+            if key in seen:
+                continue
+            seen.add(key)
+            unique_alerts.append(alert)
+        return unique_alerts
 
     def run(
         self,
@@ -451,17 +796,26 @@ class RegulatoryWatchEngine:
                 {**reg, "pays": pays_list},
                 hs_code,
                 target_countries,
+                product_name,
             )
             if relevance > 20:
                 all_alerts.append({**reg, "pays_list": pays_list, "relevance": relevance})
 
         # ② Flux RSS en temps réel
         if include_live:
+            print("  Collecte RASFF structuree...")
+            structured_rasff = self._fetch_structured_rasff_alerts()
+            for alert in structured_rasff:
+                relevance = score_relevance(alert, hs_code, target_countries, product_name)
+                if relevance > 20:
+                    all_alerts.append({**alert, "relevance": relevance})
+            print(f"     RASFF structure: {len(structured_rasff)} notification(s)")
+
             print("  ② Collecte des flux RSS en temps réel...")
             for src_name, src_cfg in RSS_SOURCES.items():
                 live = fetch_rss_alerts(src_name, src_cfg)
                 for alert in live:
-                    relevance = score_relevance(alert, hs_code, target_countries)
+                    relevance = score_relevance(alert, hs_code, target_countries, product_name)
                     if relevance > 25:
                         all_alerts.append({**alert, "relevance": relevance})
                 if live:
@@ -476,6 +830,15 @@ class RegulatoryWatchEngine:
         )
 
         print(f"\n  ✅ {len(all_alerts)} alerte(s) identifiée(s)\n")
+        all_alerts = self._deduplicate_alerts(all_alerts)
+        all_alerts = self._enrich_alerts_with_nlp(all_alerts, hs_code, target_countries)
+        all_alerts.sort(
+            key=lambda x: (
+                level_order.get(x.get("niveau", LEVEL_INFO), 2),
+                -x.get("score_impact", x.get("impact_score", x.get("relevance", 0))),
+            )
+        )
+
         return all_alerts
 
     def get_summary(self, alerts: list) -> dict:

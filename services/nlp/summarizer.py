@@ -5,6 +5,7 @@ Utilise BART / mT5 pour générer des résumés concis en français
 pour les PME marocaines.
 """
 
+import os
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
@@ -37,6 +38,9 @@ class AlertSummarizer:
         """
         self.language = language
         self.device = 0 if use_gpu and torch.cuda.is_available() else -1
+        self.tokenizer = None
+        self.model = None
+        self.model_available = False
 
         # Chargement direct du modèle seq2seq pour éviter les changements de task pipeline
         if language == "en":
@@ -44,18 +48,27 @@ class AlertSummarizer:
         else:
             model_name = "google/mt5-small"
 
+        if os.getenv("MAROTRADE_USE_GENERATIVE_SUMMARY", "0").lower() not in {"1", "true", "yes"}:
+            print("Summarizer generatif desactive, fallback extractif local.")
+            return
+
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
             if self.device == 0:
                 self.model.to("cuda")
+            self.model_available = True
         except Exception as e:
             print(f"Erreur chargement modèle: {e}")
-            model_name = "t5-small"
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-            if self.device == 0:
-                self.model.to("cuda")
+            try:
+                model_name = "t5-small"
+                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+                self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+                if self.device == 0:
+                    self.model.to("cuda")
+                self.model_available = True
+            except Exception as fallback_error:
+                print(f"Summarizer indisponible, fallback extractif local: {fallback_error}")
 
     def summarize(self, text: str, max_short: int = 150, max_medium: int = 300) -> Summary:
         """
@@ -71,7 +84,10 @@ class AlertSummarizer:
         """
         # Nettoyage du texte
         text_clean = text.strip()
-        if len(text_clean) < 100:
+        if not self.model_available:
+            short = self._extractive_summary(text_clean, max_short)
+            medium = self._extractive_summary(text_clean, max_medium)
+        elif len(text_clean) < 100:
             # Texte trop court pour résumé
             short = text_clean[:max_short]
             medium = text_clean[:max_medium]
@@ -98,6 +114,14 @@ class AlertSummarizer:
             medium=medium,
             action_items=action_items
         )
+
+    def _extractive_summary(self, text: str, max_chars: int) -> str:
+        """Fallback local sans modele distant."""
+        if not text:
+            return ""
+        sentences = [sentence.strip() for sentence in text.replace("\n", " ").split(".") if sentence.strip()]
+        summary = ". ".join(sentences[:2]) if sentences else text
+        return summary[:max_chars].rstrip()
 
     def _generate_summary(self, text: str, max_length: int) -> str:
         """Génère un résumé via le modèle seq2seq chargé."""

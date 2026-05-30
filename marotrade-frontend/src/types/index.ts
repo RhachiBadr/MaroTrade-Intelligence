@@ -61,6 +61,21 @@ export interface RegulatoryAlert {
   score_impact: number
   delai_jours?:number
   llm_enhanced: boolean
+  confidence?: number
+  impact_score?: number
+  entities?: Record<string, unknown> | Array<Record<string, unknown>>
+  keywords?: string[]
+  reasoning?: string
+  resume_fr?: string
+  brief_executif?: string
+  nlp_enhanced?: boolean
+  raw_nlp_level?: AlertLevel | string
+  calibration_reason?: string
+  category?: string
+  classification?: string
+  origin?: string
+  relevance?: number
+  product_match?: boolean
 }
 
 export interface AnalysisParams {

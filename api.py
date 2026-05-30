@@ -51,6 +51,34 @@ class AlertsRequest(BaseModel):
     product_name: str
     target_countries: List[str]
 
+
+def get_alert_value(alert, key, default=None):
+    """Read an alert field from either a dictionary or a legacy object."""
+    if isinstance(alert, dict):
+        return alert.get(key, default)
+    return getattr(alert, key, default)
+
+
+def _alert_text_value(value, default: str = "") -> str:
+    if value is None:
+        return default
+    if isinstance(value, list):
+        return ", ".join(str(item) for item in value if item)
+    return str(value)
+
+
+def _alert_date_value(value) -> str:
+    if value is None:
+        return ""
+    return value.isoformat() if hasattr(value, "isoformat") else str(value)
+
+
+def _alert_number_value(value, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
 # --- Global Engine Instances (Load once) ---
 
 scoring_engine = None
@@ -133,24 +161,62 @@ def get_alerts(req: AlertsRequest):
     try:
         alerts = watch_engine.run(req.hs_code, req.product_name, req.target_countries)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Echec de la veille reglementaire: {e}")
         
     # Transformation
     response_data = []
     for a in alerts:
         response_data.append({
-            "id": a.id,
-            "titre": a.titre_fr or a.title,
-            "niveau": a.level,
-            "source": a.source,
-            "pays": a.country,
-            "pays_nom": a.country,  # On pourrait faire un mapper
-            "date": a.date.isoformat() if hasattr(a.date, 'isoformat') else str(a.date),
-            "resume": a.resume_fr or a.summary,
-            "action": a.action_requise or "",
-            "url": a.url,
-            "score_impact": int(a.impact_score),
-            "llm_enhanced": getattr(a, 'llm_analyzed', False)
+            "id": _alert_text_value(get_alert_value(a, "id", "")),
+            "titre": _alert_text_value(
+                get_alert_value(a, "titre_fr") or get_alert_value(a, "titre") or get_alert_value(a, "title", "")
+            ),
+            "niveau": _alert_text_value(get_alert_value(a, "niveau") or get_alert_value(a, "level", "INFO")),
+            "source": _alert_text_value(get_alert_value(a, "source", "")),
+            "pays": _alert_text_value(get_alert_value(a, "pays") or get_alert_value(a, "country", "")),
+            "pays_nom": _alert_text_value(
+                get_alert_value(a, "pays_nom") or get_alert_value(a, "pays") or get_alert_value(a, "country", "")
+            ),
+            "date": _alert_date_value(get_alert_value(a, "date", "")),
+            "resume": _alert_text_value(
+                get_alert_value(a, "resume_fr") or get_alert_value(a, "resume") or get_alert_value(a, "summary", "")
+            ),
+            "action": _alert_text_value(get_alert_value(a, "action") or get_alert_value(a, "action_requise", "")),
+            "url": _alert_text_value(get_alert_value(a, "url", "")),
+            "score_impact": _alert_number_value(
+                get_alert_value(a, "score_impact", get_alert_value(a, "impact_score", 0))
+            ),
+            "delai_jours": int(_alert_number_value(get_alert_value(a, "delai_jours", 0))),
+            "llm_enhanced": bool(
+                get_alert_value(
+                    a,
+                    "llm_enhanced",
+                    get_alert_value(a, "llm_analyzed", get_alert_value(a, "nlp_enhanced", False)),
+                )
+            ),
+            "confidence": _alert_number_value(
+                get_alert_value(a, "confidence", get_alert_value(a, "confiance", 0))
+            ),
+            "impact_score": _alert_number_value(
+                get_alert_value(a, "impact_score", get_alert_value(a, "score_impact", 0))
+            ),
+            "entities": get_alert_value(a, "entities", {}) or {},
+            "keywords": get_alert_value(a, "keywords", []) or [],
+            "reasoning": _alert_text_value(get_alert_value(a, "reasoning", "")),
+            "resume_fr": _alert_text_value(
+                get_alert_value(a, "resume_fr") or get_alert_value(a, "resume") or get_alert_value(a, "summary", "")
+            ),
+            "brief_executif": _alert_text_value(
+                get_alert_value(a, "brief_executif", get_alert_value(a, "summary", get_alert_value(a, "resume_fr", "")))
+            ),
+            "nlp_enhanced": bool(get_alert_value(a, "nlp_enhanced", False)),
+            "raw_nlp_level": _alert_text_value(get_alert_value(a, "raw_nlp_level", "")),
+            "calibration_reason": _alert_text_value(get_alert_value(a, "calibration_reason", "")),
+            "category": _alert_text_value(get_alert_value(a, "category", "")),
+            "classification": _alert_text_value(get_alert_value(a, "classification", "")),
+            "origin": _alert_text_value(get_alert_value(a, "origin", "")),
+            "relevance": _alert_number_value(get_alert_value(a, "relevance", 0)),
+            "product_match": bool(get_alert_value(a, "product_match", False)),
         })
         
     return response_data

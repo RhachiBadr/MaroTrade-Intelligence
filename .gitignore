@@ -35,12 +35,15 @@ figures/
 *.tmp
 *.bak
 notebooks/.ipynb_checkpoints/
+notebooks/catboost_info/
+models/
 package-lock.json
 package.json
 node_modules
 marotrade-frontend/node_modules/
 marotrade-frontend/.next/
 marotrade-frontend/out/
+marotrade-frontend/regulations-check.png
 marotrade-frontend/public/videos/*.mp4
 marotrade-frontend/public/videos/*.mov
 marotrade-frontend/public/videos/*.webm

@@ -138,8 +138,8 @@ export default function ResultsPage() {
 
             <div className="border-t border-border pt-8">
               <h3 className="mb-4 text-sm font-medium text-text-muted">Score global</h3>
-              <div className="h-[240px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="w-full">
+                <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={barData} layout="vertical" margin={{ left: 8 }}>
                     <XAxis type="number" domain={[0, 100]} hide />
                     <YAxis
