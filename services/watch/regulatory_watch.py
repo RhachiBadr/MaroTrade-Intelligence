@@ -71,6 +71,12 @@ def _matches_product(alert: dict, hs_code: str, product_name: str = "") -> bool:
     if not keywords:
         return True
 
+    declared_products = alert.get("produits") or alert.get("products") or []
+    if isinstance(declared_products, str):
+        declared_products = [declared_products]
+    if hs_code and any(str(product).strip() == hs_code for product in declared_products):
+        return True
+
     alert_text = " ".join(
         str(alert.get(field, "") or "")
         for field in ["titre", "resume", "category", "classification", "origin", "produits"]
@@ -598,9 +604,13 @@ class RegulatoryWatchEngine:
         if relevance < 30:
             calibrated = LEVEL_INFO
             reasons.append("downgraded: faible pertinence produit/marche")
-        elif product_match is False and live_alert and calibrated == LEVEL_CRITICAL:
+        elif product_match is False and calibrated == LEVEL_CRITICAL:
             calibrated = LEVEL_WARNING
-            reasons.append("downgraded: alerte temps reel hors produit")
+            reasons.append(
+                "downgraded: alerte temps reel hors produit"
+                if live_alert
+                else "downgraded: alerte hors produit"
+            )
         elif relevance < 55 and calibrated == LEVEL_CRITICAL and not alert.get("maroc_relevant"):
             calibrated = LEVEL_WARNING
             reasons.append("downgraded: critique NLP mais pertinence export moderee")
@@ -792,14 +802,15 @@ class RegulatoryWatchEngine:
             if "EU" in pays_list:
                 pays_list = ["FRA", "DEU", "ESP", "ITA", "NLD", "BEL", "GBR"]
 
+            alert_data = {**reg, "pays": pays_list}
             relevance = score_relevance(
-                {**reg, "pays": pays_list},
+                alert_data,
                 hs_code,
                 target_countries,
                 product_name,
             )
             if relevance > 20:
-                all_alerts.append({**reg, "pays_list": pays_list, "relevance": relevance})
+                all_alerts.append({**alert_data, "pays_list": pays_list, "relevance": relevance})
 
         # ② Flux RSS en temps réel
         if include_live:
