@@ -1,3 +1,5 @@
+import hashlib
+import json
 import os
 from contextlib import asynccontextmanager
 from typing import List, Optional, Dict, Any
@@ -6,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Import modules from the current backend
+from services.cache import CacheService
+
 try:
     from services import MarketScoringEngine, RegulatoryWatchEngine
 except ImportError:
@@ -79,10 +83,22 @@ def _alert_number_value(value, default: float = 0.0) -> float:
     except (TypeError, ValueError):
         return default
 
+
+def _alerts_cache_key(req: AlertsRequest) -> str:
+    payload = {
+        "hs_code": req.hs_code.strip(),
+        "product_name": req.product_name.strip().lower(),
+        "target_countries": sorted(country.strip().upper() for country in req.target_countries),
+    }
+    digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()[:16]
+    return f"api:alerts:{digest}"
+
 # --- Global Engine Instances (Load once) ---
 
 scoring_engine = None
 watch_engine = None
+cache_service = CacheService()
+ALERTS_CACHE_TTL_SECONDS = int(os.getenv("ALERTS_CACHE_TTL_SECONDS", "900"))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -149,7 +165,6 @@ def get_score(req: ScoreRequest):
                 "cout_conteneur": float(r.logistique_info.get('cout_conteneur_usd', 0))
             }
         })
-        
     return response_data
 
 
@@ -158,6 +173,11 @@ def get_alerts(req: AlertsRequest):
     if not watch_engine:
         raise HTTPException(status_code=500, detail="Moteur de veille non chargé.")
         
+    cache_key = _alerts_cache_key(req)
+    cached_response = cache_service.get(cache_key)
+    if cached_response is not None:
+        return cached_response
+
     try:
         alerts = watch_engine.run(req.hs_code, req.product_name, req.target_countries)
     except Exception as e:
@@ -219,6 +239,7 @@ def get_alerts(req: AlertsRequest):
             "product_match": bool(get_alert_value(a, "product_match", False)),
         })
         
+    cache_service.set(cache_key, response_data, ttl=ALERTS_CACHE_TTL_SECONDS)
     return response_data
 
 
