@@ -21,12 +21,17 @@ export async function fetchScore(payload: { hs_code: string; product_name: strin
   }
 }
 
-export async function fetchAlerts(hs_code: string, product_name: string, target_countries: string[]): Promise<RegulatoryAlert[]> {
+export async function fetchAlerts(
+  hs_code: string,
+  product_name: string,
+  target_countries: string[],
+  force_refresh = false
+): Promise<RegulatoryAlert[]> {
   try {
     const res = await fetch(`${API_URL}/api/alerts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hs_code, product_name, target_countries })
+      body: JSON.stringify({ hs_code, product_name, target_countries, force_refresh })
     })
     if (!res.ok) throw new Error('API Error')
     return await res.json()

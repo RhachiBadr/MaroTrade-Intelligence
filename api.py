@@ -54,6 +54,7 @@ class AlertsRequest(BaseModel):
     hs_code: str
     product_name: str
     target_countries: List[str]
+    force_refresh: bool = False
 
 
 def get_alert_value(alert, key, default=None):
@@ -174,9 +175,12 @@ def get_alerts(req: AlertsRequest):
         raise HTTPException(status_code=500, detail="Moteur de veille non chargé.")
         
     cache_key = _alerts_cache_key(req)
-    cached_response = cache_service.get(cache_key)
-    if cached_response is not None:
-        return cached_response
+    if req.force_refresh:
+        cache_service.delete(cache_key)
+    else:
+        cached_response = cache_service.get(cache_key)
+        if cached_response is not None:
+            return cached_response
 
     try:
         alerts = watch_engine.run(req.hs_code, req.product_name, req.target_countries)

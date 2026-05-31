@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { AlertCard } from '@/components/molecules/AlertCard'
-import { useRegulatoryAlerts } from '@/lib/api'
+import { fetchAlerts, useRegulatoryAlerts } from '@/lib/api'
 import { MOCK_ALERTS } from '@/lib/mock-data'
 import type { AlertLevel } from '@/types'
 import { Download, ShieldCheck, Sparkles, Filter, RefreshCw } from 'lucide-react'
@@ -9,13 +9,17 @@ import { cn } from '@/lib/utils'
 import { PageContainer, PageHeader } from '@/components/ui/page-shell'
 import { Button } from '@/components/ui/button'
 import { useAnalysisStore } from '@/store/analysis'
+import { useQueryClient } from '@tanstack/react-query'
 
 const LEVELS: AlertLevel[] = ['CRITIQUE', 'ATTENTION', 'INFO']
 
 export default function RegulationsPage() {
+  const queryClient = useQueryClient()
   const params = useAnalysisStore((s) => s.params)
   const results = useAnalysisStore((s) => s.results)
   const [levelFilter, setLevelFilter] = useState<AlertLevel[]>(['CRITIQUE', 'ATTENTION', 'INFO'])
+  const [isForceRefreshing, setIsForceRefreshing] = useState(false)
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
   const hsCode = params?.hs_code || '151590'
   const productName = params?.product_name || 'Huile argan'
@@ -23,7 +27,8 @@ export default function RegulationsPage() {
     ? results.slice(0, 5).map((r) => r.country.code)
     : ['FRA']
 
-  const { data: liveAlerts, isFetching, isError, refetch } = useRegulatoryAlerts(hsCode, productName, targetCountries)
+  const { data: liveAlerts, isFetching, isError } = useRegulatoryAlerts(hsCode, productName, targetCountries)
+  const alertsQueryKey = ['alerts', hsCode, targetCountries.join(',')]
   const alerts = liveAlerts?.length ? liveAlerts : MOCK_ALERTS
   const filtered = alerts.filter(a => levelFilter.includes(a.niveau))
   const critique = filtered.filter(a => a.niveau === 'CRITIQUE')
@@ -34,6 +39,17 @@ export default function RegulationsPage() {
     setLevelFilter(prev => prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l])
 
   const llmAlerts = alerts.filter(a => a.llm_enhanced || a.nlp_enhanced)
+
+  async function forceRefreshAlerts() {
+    setIsForceRefreshing(true)
+    try {
+      const freshAlerts = await fetchAlerts(hsCode, productName, targetCountries, true)
+      queryClient.setQueryData(alertsQueryKey, freshAlerts)
+      setLastRefresh(new Date())
+    } finally {
+      setIsForceRefreshing(false)
+    }
+  }
 
   function exportCSV() {
     const rows = [['Niveau', 'Titre', 'Source', 'Date', 'Impact', 'Confiance', 'NLP', 'Action']]
@@ -60,8 +76,8 @@ export default function RegulationsPage() {
         description="Sources : EUR-Lex, RASFF, OMC, FDA — filtrez par niveau de criticité."
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="secondary" onClick={() => refetch()} className="gap-2" disabled={isFetching}>
-              <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
+            <Button type="button" variant="secondary" onClick={forceRefreshAlerts} className="gap-2" disabled={isFetching || isForceRefreshing}>
+              <RefreshCw className={cn('h-4 w-4', (isFetching || isForceRefreshing) && 'animate-spin')} />
               Actualiser
             </Button>
             <Button type="button" variant="secondary" onClick={exportCSV} className="gap-2">
@@ -77,7 +93,10 @@ export default function RegulationsPage() {
         <span>Produit : {productName}</span>
         <span>HS {hsCode}</span>
         <span>Marchés : {targetCountries.join(', ')}</span>
-        {isFetching && <span className="text-primary">Synchronisation en cours...</span>}
+        {isFetching && <span className="text-primary">Lecture du cache Redis...</span>}
+        {isForceRefreshing && <span className="text-primary">Actualisation temps réel en cours...</span>}
+        {!isFetching && !isForceRefreshing && <span>Cache Redis actif</span>}
+        {lastRefresh && <span>Dernière actualisation : {lastRefresh.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>}
         {isError && <span className="text-warning">API indisponible, données de démonstration affichées.</span>}
       </div>
 
