@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -93,6 +94,30 @@ def _alerts_cache_key(req: AlertsRequest) -> str:
     }
     digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()[:16]
     return f"api:alerts:{digest}"
+
+
+def _redis_health() -> Dict[str, Any]:
+    if not cache_service.redis:
+        return {"connected": False, "backend": "memory"}
+    try:
+        cache_service.redis.ping()
+        return {"connected": True, "backend": "redis"}
+    except Exception as exc:
+        return {"connected": False, "backend": "redis", "error": str(exc)}
+
+
+def _nlp_health() -> Dict[str, Any]:
+    nlp_analyzer = getattr(watch_engine, "nlp_analyzer", None) if watch_engine else None
+    opensource = getattr(nlp_analyzer, "opensource_analyzer", None) if nlp_analyzer else None
+    classifier = getattr(opensource, "classifier", None) if opensource else None
+
+    return {
+        "available": bool(nlp_analyzer),
+        "opensource_analyzer": bool(opensource),
+        "local_classifier": bool(getattr(classifier, "local_model_available", False)),
+        "model_path": str(getattr(classifier, "model_path", "")) if classifier else "",
+        "fallback": "zero-shot/rules" if not getattr(classifier, "local_model_available", False) else None,
+    }
 
 # --- Global Engine Instances (Load once) ---
 
@@ -259,6 +284,35 @@ def get_forecast(hs_code: str, country: str):
 @app.get("/")
 def health_check():
     return {"status": "ok", "message": "MaroTrade API is running."}
+
+
+@app.get("/api/health")
+def api_health():
+    redis_status = _redis_health()
+    nlp_status = _nlp_health()
+    scoring_loaded = scoring_engine is not None
+    watch_loaded = watch_engine is not None
+
+    degraded = (
+        not scoring_loaded
+        or not watch_loaded
+        or not redis_status.get("connected")
+        or not nlp_status.get("local_classifier")
+    )
+
+    return {
+        "status": "degraded" if degraded else "ok",
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "services": {
+            "redis": redis_status,
+            "scoring_engine": {"loaded": scoring_loaded},
+            "regulatory_watch": {"loaded": watch_loaded},
+            "nlp": nlp_status,
+        },
+        "config": {
+            "alerts_cache_ttl_seconds": ALERTS_CACHE_TTL_SECONDS,
+        },
+    }
 
 if __name__ == "__main__":
     import uvicorn
