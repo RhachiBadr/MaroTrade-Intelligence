@@ -18,11 +18,13 @@ import numpy as np
 import pandas as pd
 import logging
 import time
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 import warnings
 warnings.filterwarnings("ignore")
 
+import joblib
 from sklearn.preprocessing import MinMaxScaler
 from xgboost import XGBRegressor
 import shap
@@ -36,6 +38,11 @@ from external_api_manager import api_manager
 from dynamic_growth import enrich_with_growth, interpret_growth, growth_label
 
 logger = logging.getLogger("marotrade.scoring")
+
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+V6_MODEL_PATH = ROOT_DIR / "artifacts" / "market_ranking_model_v6.joblib"
+V6_RESULTS_PATH = ROOT_DIR / "artifacts" / "benchmark_phase1_v6_results.json"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -162,6 +169,9 @@ class MarketResult:
     certifications_requises: List[str]
     payment_alerte: str            # Alerte sur le mode de paiement recommandé
     shap_narrative: str            # Explication narrative du score en langage naturel
+    score_ml_v6: Optional[float] = None
+    scoring_method: str = "legacy_weighted_xgboost"
+    v6_features_used: List[str] = field(default_factory=list)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -183,6 +193,176 @@ class MarketScoringEngine:
         self._weights      = WEIGHTS_DEFAULT
         self._hs_code      = ""
         self._product_name = ""
+        self.v6_model_bundle = None
+        self.v6_model = None
+        self.v6_preprocessor = None
+        self.v6_features: List[str] = []
+        self.v6_target = ""
+        self.v6_available = False
+        self.wb_indicators = pd.DataFrame()
+        self.ocde_risk = pd.DataFrame()
+        self._load_v6_model()
+        self._load_v6_reference_data()
+
+    def _load_v6_model(self) -> None:
+        """Load the offline benchmark v6 model if the artifact is available."""
+        if not V6_MODEL_PATH.exists():
+            logger.warning("V6 market ranking model not found, using legacy scoring only: %s", V6_MODEL_PATH)
+            return
+
+        try:
+            self.v6_model_bundle = joblib.load(V6_MODEL_PATH)
+            self.v6_model = self.v6_model_bundle.get("model")
+            self.v6_preprocessor = self.v6_model_bundle.get("preprocessor")
+            self.v6_features = list(self.v6_model_bundle.get("features", []))
+            self.v6_target = str(self.v6_model_bundle.get("target", "market_attractiveness_target"))
+            self.v6_available = self.v6_model is not None and bool(self.v6_features)
+            if self.v6_available:
+                logger.info("Loaded v6 market ranking model: %s", V6_MODEL_PATH)
+            else:
+                logger.warning("V6 model artifact is incomplete, using legacy scoring only")
+        except Exception as exc:
+            logger.exception("Failed to load v6 market ranking model: %s", exc)
+            self.v6_available = False
+
+    def _load_v6_reference_data(self) -> None:
+        """Load compact benchmark reference tables used by v6 features."""
+        data_dir = ROOT_DIR / "data" / "raw"
+        wb_path = data_dir / "worldbank_indicators.csv"
+        ocde_path = data_dir / "ocde_risk.csv"
+
+        try:
+            if wb_path.exists():
+                wb = pd.read_csv(wb_path)
+                code_col = "iso3" if "iso3" in wb.columns else "Unnamed: 0"
+                wb["country_code"] = wb[code_col].astype(str)
+                self.wb_indicators = wb.rename(columns={
+                    "gdp_per_capita": "wb_gdp_per_capita",
+                    "imports_pct_gdp": "wb_imports_pct_gdp",
+                    "trade_pct_gdp": "wb_trade_pct_gdp",
+                })
+        except Exception as exc:
+            logger.warning("Could not load World Bank reference data for v6 scoring: %s", exc)
+            self.wb_indicators = pd.DataFrame()
+
+        try:
+            if ocde_path.exists():
+                ocde = pd.read_csv(ocde_path)
+                code_col = "iso3" if "iso3" in ocde.columns else "Unnamed: 0"
+                ocde["country_code"] = ocde[code_col].astype(str)
+                if "ocde_risk_score" not in ocde.columns:
+                    if "category" in ocde.columns:
+                        ocde["ocde_risk_score"] = ocde["category"]
+                    elif "score" in ocde.columns:
+                        ocde["ocde_risk_score"] = (100 - ocde["score"]) / 20
+                self.ocde_risk = ocde[["country_code", "ocde_risk_score"]].drop_duplicates("country_code")
+        except Exception as exc:
+            logger.warning("Could not load OCDE reference data for v6 scoring: %s", exc)
+            self.ocde_risk = pd.DataFrame()
+
+    def _lookup_wb_indicator(self, country_code: str, column: str, default: float = 0.0) -> float:
+        if self.wb_indicators.empty or column not in self.wb_indicators.columns:
+            return default
+        row = self.wb_indicators[self.wb_indicators["country_code"] == country_code]
+        if row.empty:
+            return default
+        value = pd.to_numeric(row.iloc[0].get(column), errors="coerce")
+        return float(default if pd.isna(value) else value)
+
+    def _lookup_ocde_risk(self, country_code: str, fallback: float = 3.0) -> float:
+        if self.ocde_risk.empty:
+            return fallback
+        row = self.ocde_risk[self.ocde_risk["country_code"] == country_code]
+        if row.empty:
+            return fallback
+        value = pd.to_numeric(row.iloc[0].get("ocde_risk_score"), errors="coerce")
+        return float(fallback if pd.isna(value) else value)
+
+    def build_v6_feature_matrix(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Build the 17 benchmark v6 features from the runtime market matrix.
+        Missing historical lags are approximated from current value and growth.
+        """
+        features_df = pd.DataFrame(index=df.index)
+        total_value = float(df["value_usd"].sum()) if "value_usd" in df else 0.0
+        growth = pd.to_numeric(df.get("growth_pct", 0.0), errors="coerce").fillna(0.0) / 100.0
+        value = pd.to_numeric(df.get("value_usd", 0.0), errors="coerce").fillna(0.0).clip(lower=0.0)
+        price = pd.to_numeric(df.get("price_usd_kg", 0.0), errors="coerce").fillna(0.0).clip(lower=0.0)
+
+        safe_growth = growth.replace(-1.0, np.nan)
+        lag1 = (value / (1.0 + safe_growth)).replace([np.inf, -np.inf], np.nan).fillna(value)
+        lag2 = (lag1 / (1.0 + safe_growth)).replace([np.inf, -np.inf], np.nan).fillna(lag1)
+        lag3 = (lag2 / (1.0 + safe_growth)).replace([np.inf, -np.inf], np.nan).fillna(lag2)
+        ma3 = pd.concat([lag1, lag2, lag3], axis=1).mean(axis=1)
+        std3 = pd.concat([lag1, lag2, lag3], axis=1).std(axis=1).fillna(0.0)
+
+        features_df["log_value_usd"] = np.log1p(value)
+        features_df["log_lag1"] = np.log1p(lag1.clip(lower=0.0))
+        features_df["log_ma3"] = np.log1p(ma3.clip(lower=0.0))
+        features_df["std3"] = std3
+        features_df["growth_lag1"] = growth * 100.0
+        features_df["log_return_lag1"] = np.log1p(growth.clip(lower=-0.95)) * 100.0
+        features_df["price_usd_kg"] = price
+        features_df["market_share"] = value / total_value if total_value > 0 else 0.0
+        features_df["cagr_3y"] = ((value / lag3.replace(0, np.nan)) ** (1 / 3) - 1).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
+        accord_scores, droits = [], []
+        wb_gdp, wb_imports, wb_available = [], [], []
+        ocde_scores, distances, trend_scores = [], [], []
+
+        for _, row in df.iterrows():
+            code = str(row.get("country_code", ""))
+            accord = get_accord_score(code)
+            logist = get_logistique(code)
+            trends = get_trends(code, self._hs_code)
+
+            accord_type = accord.get("type", "")
+            accord_scores.append(100.0 if accord_type == "ALE" else 50.0 if accord_type == "PREF" else 0.0)
+            droits.append(float(accord.get("droits", 15.0) or 0.0))
+
+            gdp = self._lookup_wb_indicator(code, "wb_gdp_per_capita", default=0.0)
+            imports = self._lookup_wb_indicator(code, "wb_imports_pct_gdp", default=0.0)
+            wb_gdp.append(gdp)
+            wb_imports.append(imports)
+            wb_available.append(1 if gdp > 0 or imports > 0 else 0)
+
+            ocde_scores.append(self._lookup_ocde_risk(code, fallback=float(logist.get("risk_category", 3) or 3)))
+            distances.append(float(logist.get("distance_km", row.get("distance_km", 5000)) or 5000))
+            trend_scores.append(float(trends.get("trend_score", row.get("tendance", 50)) or 50))
+
+        features_df["accord_score"] = accord_scores
+        features_df["droits"] = droits
+        features_df["wb_gdp_per_capita"] = wb_gdp
+        features_df["wb_imports_pct_gdp"] = wb_imports
+        features_df["wb_available"] = wb_available
+        features_df["ocde_risk_score"] = ocde_scores
+        features_df["distance_km"] = distances
+        features_df["trend_score"] = trend_scores
+
+        for feature in self.v6_features:
+            if feature not in features_df.columns:
+                features_df[feature] = 0.0
+
+        return features_df[self.v6_features].replace([np.inf, -np.inf], np.nan)
+
+    def predict_v6_scores(self, df: pd.DataFrame) -> Optional[np.ndarray]:
+        """Predict normalized market attractiveness scores with the v6 model."""
+        if not self.v6_available:
+            return None
+        try:
+            X = self.build_v6_feature_matrix(df)
+            X_model = self.v6_preprocessor.transform(X) if self.v6_preprocessor is not None else X
+            raw_scores = np.asarray(self.v6_model.predict(X_model), dtype=float)
+            if len(raw_scores) == 0:
+                return None
+            min_score = float(np.nanmin(raw_scores))
+            max_score = float(np.nanmax(raw_scores))
+            if np.isclose(max_score, min_score):
+                return np.full_like(raw_scores, 50.0, dtype=float)
+            return (raw_scores - min_score) / (max_score - min_score) * 100.0
+        except Exception as exc:
+            logger.exception("V6 market ranking inference failed, using legacy scoring: %s", exc)
+            return None
 
     def _get_weights(self, hs_code: str) -> dict:
         """Retourne les poids adaptés au type de produit."""
@@ -829,6 +1009,15 @@ class MarketScoringEngine:
         if final_scores.max() > 0:
             final_scores = final_scores / final_scores.max() * 100.0
 
+        v6_scores = self.predict_v6_scores(df)
+        scoring_method = "legacy_weighted_xgboost"
+        if v6_scores is not None:
+            final_scores = v6_scores
+            scoring_method = "v6_market_attractiveness"
+            logger.info("Using v6 market ranking model for final market ranking")
+        else:
+            logger.info("Using legacy weighted/XGBoost ranking")
+
         order   = np.argsort(final_scores)[::-1]
         results = []
 
@@ -879,6 +1068,9 @@ class MarketScoringEngine:
                 certifications_requises=certifications,
                 payment_alerte=payment_alerte,
                 shap_narrative=narrative,
+                score_ml_v6=round(float(final_scores[idx]), 1) if scoring_method == "v6_market_attractiveness" else None,
+                scoring_method=scoring_method,
+                v6_features_used=list(self.v6_features) if scoring_method == "v6_market_attractiveness" else [],
             ))
 
         elapsed = time.time() - t_start

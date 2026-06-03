@@ -230,19 +230,8 @@ def _save_csv(rows: list, suffix: str = "") -> pd.DataFrame:
 
     df = pd.DataFrame(rows)
 
-    # Nettoyer
-    df["value_usd"]  = pd.to_numeric(df["value_usd"], errors="coerce").fillna(0)
-    df["weight_kg"]  = pd.to_numeric(df["weight_kg"], errors="coerce").fillna(0)
-    df["year"]       = df["year"].astype(int)
-    df["hs_code"]    = df["hs_code"].astype(str).str.zfill(2)
-
-    # Prix moyen USD/kg
-    df["price_usd_kg"] = (
-        df["value_usd"] / df["weight_kg"].replace(0, float("nan"))
-    ).fillna(0)
-
-    # Trier
-    df = df.sort_values(["hs_code", "partner_code", "year"]).reset_index(drop=True)
+    # Clean and aggregate one market observation per product/year/country.
+    df = _aggregate_market_panel(df)
 
     # Sauvegarder
     path = DATA_DIR / f"comtrade_ag2_full{suffix}.csv"
@@ -255,6 +244,79 @@ def _save_csv(rows: list, suffix: str = "") -> pd.DataFrame:
 # ════════════════════════════════════════════════════════════
 # ÉTAPE 4 — Construction dataset ML avec log-return
 # ════════════════════════════════════════════════════════════
+
+def _aggregate_market_panel(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Garantit une seule observation par (hs_code, year, partner_code).
+
+    UN Comtrade peut retourner plusieurs lignes pour le meme marche. Pour un
+    benchmark de ranking PME, on doit comparer chaque pays une seule fois pour
+    un produit et une annee donnee. Les valeurs et volumes sont donc sommes
+    avant le calcul du target, des lags et des splits.
+    """
+    df = df.copy()
+
+    if "hs_desc" not in df.columns:
+        df["hs_desc"] = ""
+    if "partner_name" not in df.columns:
+        df["partner_name"] = ""
+
+    df["value_usd"] = pd.to_numeric(df["value_usd"], errors="coerce").fillna(0)
+    df["weight_kg"] = pd.to_numeric(df["weight_kg"], errors="coerce").fillna(0)
+    df["year"] = pd.to_numeric(df["year"], errors="coerce").astype("Int64")
+    df["hs_code"] = df["hs_code"].astype(str).str.zfill(2)
+    df["partner_code"] = df["partner_code"].astype(str).str.strip()
+    df["hs_desc"] = df["hs_desc"].astype(str)
+    df["partner_name"] = df["partner_name"].astype(str)
+
+    df = df.dropna(subset=["year"])
+    df["year"] = df["year"].astype(int)
+
+    key_cols = ["hs_code", "year", "partner_code"]
+    duplicate_extra = int(df.duplicated(key_cols).sum())
+
+    if duplicate_extra:
+        print(
+            "   Duplicate market rows detected: "
+            f"{duplicate_extra:,} extra rows -> aggregating by product/year/country"
+        )
+
+    df = (
+        df.groupby(key_cols, as_index=False)
+        .agg({
+            "hs_desc": "first",
+            "partner_name": "first",
+            "value_usd": "sum",
+            "weight_kg": "sum",
+        })
+    )
+
+    df["price_usd_kg"] = (
+        df["value_usd"] / df["weight_kg"].replace(0, float("nan"))
+    ).fillna(0)
+
+    return df.sort_values(["hs_code", "partner_code", "year"]).reset_index(drop=True)
+
+
+def _count_duplicate_market_keys(df: pd.DataFrame) -> int:
+    """Compte les lignes excedentaires sur la cle benchmark marche."""
+    key_cols = ["hs_code", "year", "partner_code"]
+    if not set(key_cols).issubset(df.columns):
+        return 0
+    return int(df.duplicated(key_cols).sum())
+
+
+def _safe_to_csv(df: pd.DataFrame, path: Path) -> Path:
+    """Sauvegarde un CSV, ou un .new.csv si le fichier cible est verrouille."""
+    try:
+        df.to_csv(path, index=False)
+        return path
+    except PermissionError:
+        fallback_path = path.with_name(f"{path.stem}.new{path.suffix}")
+        df.to_csv(fallback_path, index=False)
+        print(f"   Fichier verrouille, sauvegarde alternative : {fallback_path}")
+        return fallback_path
+
 
 def build_ml_dataset():
     """
@@ -274,6 +336,8 @@ def build_ml_dataset():
         return
 
     df = pd.read_csv(path)
+    df = _aggregate_market_panel(df)
+    print(f"   Apres aggregation marche : {len(df):,} lignes")
     print(f"✅ Données chargées : {len(df):,} lignes")
 
     # ── Trier ────────────────────────────────────────────────
@@ -290,6 +354,7 @@ def build_ml_dataset():
         (df["value_next"] / df["value_usd"].replace(0, float("nan")))
         .apply(lambda x: None if x is None or x <= 0 else __import__("math").log(x) * 100)
     )
+    df["target_year"] = df["year"] + 1
 
     # ── Lag features ─────────────────────────────────────────
     grp = df.groupby(["hs_code", "partner_code"])["value_usd"]
@@ -312,7 +377,7 @@ def build_ml_dataset():
     )
 
     # ── Features prix ─────────────────────────────────────────
-    df["price_lag1"] = grp.shift(1)  # proxy
+    df["price_lag1"] = df.groupby(["hs_code", "partner_code"])["price_usd_kg"].shift(1)
 
     # ── Supprimer lignes sans cible ───────────────────────────
     df_ml = df.dropna(subset=["log_return"]).copy()
@@ -328,9 +393,16 @@ def build_ml_dataset():
     print(f"   Log-return std   : {df_ml['log_return'].std():.2f}%")
 
     # ── Split temporel ────────────────────────────────────────
-    train = df_ml[df_ml["year"] <= 2021]
-    val   = df_ml[df_ml["year"].isin([2022, 2023])]
-    test  = df_ml[df_ml["year"].isin([2024, 2025])]
+    latest_feature_year = int(df_ml["year"].max())
+    val_years = [latest_feature_year - 2, latest_feature_year - 1]
+
+    train = df_ml[df_ml["year"] < val_years[0]]
+    val   = df_ml[df_ml["year"].isin(val_years)]
+    test  = df_ml[df_ml["year"] == latest_feature_year]
+    dup_full = _count_duplicate_market_keys(df_ml)
+    dup_train = _count_duplicate_market_keys(train)
+    dup_val = _count_duplicate_market_keys(val)
+    dup_test = _count_duplicate_market_keys(test)
 
     print(f"\n✅ Split temporel :")
     print(f"   Train (2015–2021) : {len(train):,} lignes")
@@ -338,16 +410,27 @@ def build_ml_dataset():
     print(f"   Test  (2024–2025) : {len(test):,} lignes")
 
     # ── Sauvegarder ───────────────────────────────────────────
-    df_ml.to_csv(DATA_DIR / "ml_dataset_full.csv",   index=False)
-    train.to_csv(DATA_DIR / "ml_train.csv",           index=False)
-    val.to_csv(  DATA_DIR / "ml_val.csv",             index=False)
-    test.to_csv( DATA_DIR / "ml_test.csv",            index=False)
+    print(f"   Split effectif train : feature year < {val_years[0]}")
+    print(f"   Split effectif val   : feature years {val_years[0]}-{val_years[1]}")
+    print(
+        f"   Split effectif test  : feature year {latest_feature_year}, "
+        f"target year {latest_feature_year + 1}"
+    )
+    print(f"   Doublons ML complet : {dup_full:,}")
+    print(f"   Doublons train      : {dup_train:,}")
+    print(f"   Doublons val        : {dup_val:,}")
+    print(f"   Doublons test       : {dup_test:,}")
+
+    saved_full = _safe_to_csv(df_ml, DATA_DIR / "ml_dataset_full.csv")
+    saved_train = _safe_to_csv(train, DATA_DIR / "ml_train.csv")
+    saved_val = _safe_to_csv(val, DATA_DIR / "ml_val.csv")
+    saved_test = _safe_to_csv(test, DATA_DIR / "ml_test.csv")
 
     print(f"\n✅ Datasets sauvegardés :")
-    print(f"   data/raw/ml_dataset_full.csv")
-    print(f"   data/raw/ml_train.csv")
-    print(f"   data/raw/ml_val.csv")
-    print(f"   data/raw/ml_test.csv")
+    print(f"   {saved_full}")
+    print(f"   {saved_train}")
+    print(f"   {saved_val}")
+    print(f"   {saved_test}")
 
     return df_ml
 
