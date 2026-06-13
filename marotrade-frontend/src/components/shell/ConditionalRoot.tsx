@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { AppShell } from '@/components/shell/AppShell'
 import { MarketingShell } from '@/components/marketing/MarketingShell'
+import { PrivateRoute } from '@/components/auth/PrivateRoute'
 
 const MARKETING_ROUTES = ['/', '/login', '/pricing']
 
@@ -16,5 +17,9 @@ export function ConditionalRoot({ children }: { children: React.ReactNode }) {
   if (isMarketingRoute(pathname)) {
     return <MarketingShell>{children}</MarketingShell>
   }
-  return <AppShell>{children}</AppShell>
+  return (
+    <PrivateRoute>
+      <AppShell>{children}</AppShell>
+    </PrivateRoute>
+  )
 }

@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Building2,
   Check,
+  ChevronDown,
   ChevronLeft,
   Eye,
   EyeOff,
@@ -25,8 +27,10 @@ import { GlassCard } from '@/components/ui/glass-card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { easeOut } from '@/lib/motion'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { requestPasswordReset, resetPassword, verifyEmail } from '@/lib/auth-api'
 
-type AuthMode = 'login' | 'signup' | 'forgot' | 'verify'
+type AuthMode = 'login' | 'signup' | 'forgot' | 'reset' | 'verify'
 type FormErrors = Record<string, string>
 
 const MOROCCAN_CITIES = [
@@ -157,26 +161,29 @@ function SelectField({
         {label}
       </label>
       <div className="relative">
-        {Icon && <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />}
+        {Icon && <Icon className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" />}
         <select
           id={name}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           className={cn(
-            'h-11 w-full appearance-none rounded-xl border bg-[#0b0b14]/90 px-3 py-2 text-sm text-text-primary outline-none transition-all',
+            'h-11 w-full appearance-none rounded-xl border bg-white/80 px-3 py-2 pr-10 text-sm font-medium text-slate-900 shadow-sm outline-none backdrop-blur-xl transition-all dark:bg-slate-950/80 dark:text-slate-100',
             Icon && 'pl-10',
             error
               ? 'border-danger-500/50 focus:border-danger-500 focus:ring-2 focus:ring-danger-500/20'
-              : 'border-white/10 focus:border-primary-400/60 focus:ring-2 focus:ring-primary-400/20'
+              : 'border-slate-200 hover:border-primary-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-white/15 dark:hover:border-primary-400/60'
           )}
         >
-          <option value="">Selectionner</option>
+          <option value="" className="text-slate-500">
+            Sélectionner
+          </option>
           {options.map((option) => (
-            <option key={option} value={option}>
+            <option key={option} value={option} className="text-slate-900">
               {option}
             </option>
           ))}
         </select>
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
       </div>
       {error && <p className="text-xs font-medium text-danger-500">{error}</p>}
     </div>
@@ -250,15 +257,20 @@ function PasswordStrength({ password }: { password: string }) {
 }
 
 export default function LoginPage() {
+  const router = useRouter()
+  const { login: authenticate, register } = useAuth()
   const [mode, setMode] = useState<AuthMode>('login')
   const [step, setStep] = useState(1)
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(true)
   const [errors, setErrors] = useState<FormErrors>({})
   const [notice, setNotice] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const [login, setLogin] = useState({ email: '', password: '' })
   const [forgotEmail, setForgotEmail] = useState('')
+  const [resetToken, setResetToken] = useState('')
+  const [newPassword, setNewPassword] = useState('')
   const [verifyCode, setVerifyCode] = useState('')
   const [signup, setSignup] = useState({
     company: '',
@@ -302,7 +314,9 @@ export default function LoginPage() {
     if (currentStep === 1) {
       if (signup.company.trim().length < 2) nextErrors.company = 'Nom entreprise ou cooperative requis.'
       if (!emailRegex.test(signup.email)) nextErrors.email = 'Email professionnel valide requis.'
-      if (signup.password.length < 8) nextErrors.password = 'Minimum 8 caracteres.'
+      if (signup.password.length < 10 || !/[A-Z]/.test(signup.password) || !/[0-9]/.test(signup.password)) {
+        nextErrors.password = 'Minimum 10 caractères, avec une majuscule et un chiffre.'
+      }
     }
     if (currentStep === 2) {
       if (!signup.country.trim()) nextErrors.country = 'Pays requis.'
@@ -319,42 +333,108 @@ export default function LoginPage() {
     return Object.keys(nextErrors).length === 0
   }
 
-  function handleLoginSubmit(event: React.FormEvent) {
+  async function handleLoginSubmit(event: React.FormEvent) {
     event.preventDefault()
     if (!validateLogin()) return
-    setNotice('Connexion prete. Branchez ici votre API auth/JWT lorsque le backend sera active.')
+    setSubmitting(true)
+    try {
+      await authenticate({ ...login, remember })
+      router.replace('/dashboard')
+    } catch (error) {
+      setErrors({ form: error instanceof Error ? error.message : 'Connexion impossible.' })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  function handleForgotSubmit(event: React.FormEvent) {
+  async function handleForgotSubmit(event: React.FormEvent) {
     event.preventDefault()
     if (!emailRegex.test(forgotEmail)) {
       setErrors({ forgotEmail: 'Entrez votre email professionnel.' })
       return
     }
-    setErrors({})
-    setMode('verify')
-    setNotice('Lien de recuperation envoye. Entrez le code recu par email pour continuer.')
+    setSubmitting(true)
+    try {
+      const result = await requestPasswordReset(forgotEmail)
+      setResetToken(result.reset_token_dev || '')
+      setErrors({})
+      setMode('reset')
+      setNotice('Demande reçue. En développement, le jeton est prérempli.')
+    } catch (error) {
+      setErrors({ forgotEmail: error instanceof Error ? error.message : 'Demande impossible.' })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  function handleSignupNext(event: React.FormEvent) {
+  async function handleResetPassword(event: React.FormEvent) {
+    event.preventDefault()
+    if (resetToken.length < 20 || newPassword.length < 10) {
+      setErrors({ reset: 'Jeton valide et mot de passe de 10 caractères minimum requis.' })
+      return
+    }
+    setSubmitting(true)
+    try {
+      await resetPassword(resetToken, newPassword)
+      switchMode('login')
+      setNotice('Mot de passe modifié. Vous pouvez vous connecter.')
+    } catch (error) {
+      setErrors({ reset: error instanceof Error ? error.message : 'Réinitialisation impossible.' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleSignupNext(event: React.FormEvent) {
     event.preventDefault()
     if (!validateStep(step)) return
     if (step < 3) {
       setStep((current) => current + 1)
       return
     }
-    setMode('verify')
-    setNotice(`Compte cree pour ${signup.company}. Un code de verification a ete envoye a ${signup.email}.`)
+    setSubmitting(true)
+    try {
+      const account = await register({
+        company: signup.company,
+        name: signup.company,
+        email: signup.email,
+        password: signup.password,
+        organization_type: signup.sector.toLowerCase().includes('cooperative') ? 'COOPERATIVE' : 'PME',
+        country: signup.country,
+        city: signup.city,
+        sector: signup.sector,
+        size: signup.size,
+        products: signup.products.split(',').map((item) => item.trim()).filter(Boolean),
+        target_markets: signup.markets,
+        export_experience: signup.experience,
+        remember: true,
+      })
+      setMode('verify')
+      setVerifyCode(account.verification_token_dev || '')
+      setNotice('Compte créé. En développement, le jeton de vérification est prérempli.')
+    } catch (error) {
+      setErrors({ form: error instanceof Error ? error.message : 'Création du compte impossible.' })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  function handleVerify(event: React.FormEvent) {
+  async function handleVerify(event: React.FormEvent) {
     event.preventDefault()
-    if (!/^\d{6}$/.test(verifyCode)) {
-      setErrors({ verifyCode: 'Code a 6 chiffres requis.' })
+    if (verifyCode.length < 20) {
+      setErrors({ verifyCode: 'Jeton de vérification requis.' })
       return
     }
-    setErrors({})
-    setNotice('Email verifie. Votre espace export est pret.')
+    setSubmitting(true)
+    try {
+      await verifyEmail(verifyCode)
+      setErrors({})
+      router.replace('/dashboard')
+    } catch (error) {
+      setErrors({ verifyCode: error instanceof Error ? error.message : 'Vérification impossible.' })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const progress = mode === 'signup' ? (step / 3) * 100 : 0
@@ -457,6 +537,11 @@ export default function LoginPage() {
                 {notice}
               </div>
             )}
+            {errors.form && (
+              <div className="mx-5 mt-5 rounded-xl border border-danger-500/25 bg-danger-500/10 px-4 py-3 text-sm text-danger-500 sm:mx-6">
+                {errors.form}
+              </div>
+            )}
 
             <div className="min-w-0 p-5 sm:p-6">
               <AnimatePresence mode="wait">
@@ -529,7 +614,7 @@ export default function LoginPage() {
                     </div>
 
                     <AnimatedButton type="submit" className="w-full">
-                      Se connecter
+                      {submitting ? 'Connexion...' : 'Se connecter'}
                     </AnimatedButton>
 
                     <div className="grid gap-2 sm:grid-cols-2">
@@ -705,7 +790,7 @@ export default function LoginPage() {
                     )}
 
                     <AnimatedButton type="submit" className="w-full">
-                      {step < 3 ? 'Continuer' : 'Creer et verifier mon email'}
+                      {submitting ? 'Création...' : step < 3 ? 'Continuer' : 'Créer et vérifier mon email'}
                     </AnimatedButton>
                   </motion.form>
                 )}
@@ -753,6 +838,44 @@ export default function LoginPage() {
                   </motion.form>
                 )}
 
+                {mode === 'reset' && (
+                  <motion.form
+                    key="reset"
+                    initial={{ opacity: 0, x: 18 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -18 }}
+                    transition={{ duration: 0.25 }}
+                    onSubmit={handleResetPassword}
+                    className="space-y-5"
+                  >
+                    <div>
+                      <h2 className="text-2xl font-semibold tracking-tight text-text-primary">Nouveau mot de passe</h2>
+                      <p className="mt-2 text-sm leading-6 text-text-muted">Choisissez un mot de passe robuste pour sécuriser votre espace PME.</p>
+                    </div>
+                    <Field
+                      label="Jeton de réinitialisation"
+                      name="reset-token"
+                      value={resetToken}
+                      error={errors.reset}
+                      icon={ShieldCheck}
+                      onChange={(value) => setResetToken(value)}
+                    />
+                    <Field
+                      label="Nouveau mot de passe"
+                      name="new-password"
+                      type="password"
+                      value={newPassword}
+                      error={errors.reset}
+                      icon={Lock}
+                      onChange={(value) => setNewPassword(value)}
+                    />
+                    <PasswordStrength password={newPassword} />
+                    <AnimatedButton type="submit" className="w-full">
+                      {submitting ? 'Réinitialisation...' : 'Modifier mon mot de passe'}
+                    </AnimatedButton>
+                  </motion.form>
+                )}
+
                 {mode === 'verify' && (
                   <motion.form
                     key="verify"
@@ -767,25 +890,25 @@ export default function LoginPage() {
                       <ShieldCheck className="h-7 w-7" />
                     </div>
                     <div className="text-center">
-                      <h2 className="text-2xl font-semibold tracking-tight text-text-primary">Verification email</h2>
+                      <h2 className="text-2xl font-semibold tracking-tight text-text-primary">Vérification email</h2>
                       <p className="mt-2 text-sm leading-6 text-text-muted">
-                        Entrez le code a 6 chiffres envoye a votre adresse professionnelle.
+                        Confirmez le jeton sécurisé envoyé à votre adresse professionnelle.
                       </p>
                     </div>
                     <Field
-                      label="Code de verification"
+                      label="Jeton de vérification"
                       name="verify-code"
                       value={verifyCode}
-                      placeholder="123456"
+                      placeholder="Jeton de vérification"
                       error={errors.verifyCode}
                       icon={ShieldCheck}
                       onChange={(value) => {
-                        setVerifyCode(value.replace(/\D/g, '').slice(0, 6))
+                        setVerifyCode(value)
                         setErrors({})
                       }}
                     />
                     <AnimatedButton type="submit" className="w-full">
-                      Verifier mon email
+                      {submitting ? 'Vérification...' : 'Vérifier mon email'}
                     </AnimatedButton>
                     <button
                       type="button"

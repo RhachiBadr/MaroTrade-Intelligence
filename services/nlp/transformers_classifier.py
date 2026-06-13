@@ -55,6 +55,8 @@ class TransformersAlertClassifier:
         self.classifier = None
         self.tokenizer = None
         self.id2label = DEFAULT_LABELS.copy()
+        self.zero_shot_enabled = os.getenv("NLP_ZERO_SHOT_FALLBACK_ENABLED", "false").lower() == "true"
+        self.local_model_enabled = os.getenv("NLP_LOCAL_MODEL_ENABLED", "true").lower() == "true"
 
         project_root = Path(__file__).resolve().parents[2]
         self.model_path = Path(
@@ -81,12 +83,16 @@ class TransformersAlertClassifier:
             ],
         }
 
-        if self._load_local_classifier():
+        if self.local_model_enabled and self._load_local_classifier():
             logger.info("Loaded fine-tuned RASFF classifier")
             logger.info("Using local fine-tuned classifier")
         else:
-            logger.warning("Fine-tuned classifier unavailable, using zero-shot fallback")
-            self._load_zero_shot_fallback()
+            if not self.local_model_enabled:
+                logger.info("Fine-tuned RASFF classifier disabled by NLP_LOCAL_MODEL_ENABLED")
+            if self.zero_shot_enabled and self._load_zero_shot_fallback():
+                logger.warning("Fine-tuned classifier unavailable, using zero-shot fallback")
+            else:
+                logger.warning("Fine-tuned classifier unavailable, using lightweight rule-based fallback")
 
     def _load_local_classifier(self) -> bool:
         """Charge le modele RASFF local si le dossier est disponible."""
@@ -102,7 +108,12 @@ class TransformersAlertClassifier:
             self.local_model_available = True
             return True
         except Exception as exc:
-            logger.exception("Fine-tuned classifier unavailable, using zero-shot fallback: %s", exc)
+            if "1455" in str(exc) or "paging file is too small" in str(exc).lower():
+                logger.warning(
+                    "Fine-tuned classifier unavailable: insufficient Windows virtual memory (error 1455)"
+                )
+            else:
+                logger.exception("Fine-tuned classifier unavailable: %s", exc)
             self.local_model_available = False
             self.local_model = None
             self.local_tokenizer = None
@@ -123,15 +134,24 @@ class TransformersAlertClassifier:
             logger.warning("Could not load label_mapping.json, using default mapping: %s", exc)
             return DEFAULT_LABELS.copy()
 
-    def _load_zero_shot_fallback(self):
+    def _load_zero_shot_fallback(self) -> bool:
         """Charge l'ancien fallback zero-shot."""
+        if not self.zero_shot_enabled:
+            return False
         logger.info("Using zero-shot fallback classifier")
-        self.classifier = pipeline(
-            "zero-shot-classification",
-            model="facebook/bart-large-mnli",
-            device=self.zero_shot_device,
-        )
-        self.tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large-mnli")
+        try:
+            self.classifier = pipeline(
+                "zero-shot-classification",
+                model="facebook/bart-large-mnli",
+                device=self.zero_shot_device,
+            )
+            self.tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large-mnli")
+            return True
+        except Exception as exc:
+            logger.warning("Zero-shot fallback unavailable, using lightweight rules: %s", exc)
+            self.classifier = None
+            self.tokenizer = None
+            return False
 
     def build_model_input(
         self,
@@ -176,11 +196,13 @@ class TransformersAlertClassifier:
                     origin=origin,
                 )
             except Exception as exc:
-                logger.exception("Local fine-tuned inference failed, falling back to zero-shot: %s", exc)
-                if self.classifier is None:
+                logger.exception("Local fine-tuned inference failed: %s", exc)
+                if self.classifier is None and self.zero_shot_enabled:
                     self._load_zero_shot_fallback()
 
-        return self._classify_with_zero_shot(text=text, context=context or {})
+        if self.classifier is not None:
+            return self._classify_with_zero_shot(text=text, context=context or {})
+        return self._classify_with_rules(text)
 
     def _classify_with_local_model(
         self,
@@ -223,8 +245,8 @@ class TransformersAlertClassifier:
     def _classify_with_zero_shot(self, text: str, context: Dict = None) -> AlertClassification:
         """Ancien classifieur zero-shot conserve comme fallback."""
         logger.info("Using zero-shot fallback classifier")
-        if self.classifier is None:
-            self._load_zero_shot_fallback()
+        if self.classifier is None and not self._load_zero_shot_fallback():
+            return self._classify_with_rules(text)
 
         context = context or {}
         enriched_text = text
@@ -251,6 +273,31 @@ class TransformersAlertClassifier:
             level=level,
             impact_score=self._calculate_impact_score(text, level, top_score),
             confidence=top_score,
+            keywords=keywords,
+            reasoning=self._generate_reasoning(text, level, keywords),
+        )
+
+    def _classify_with_rules(self, text: str) -> AlertClassification:
+        """Fallback leger et deterministe lorsque les modeles sont indisponibles."""
+        logger.info("Using lightweight rule-based classifier")
+        text_lower = text.lower()
+        matches = {
+            level: [keyword for keyword in keywords if keyword in text_lower]
+            for level, keywords in self.risk_keywords.items()
+        }
+
+        if matches["CRITIQUE"]:
+            level, confidence = "CRITIQUE", min(0.80, 0.62 + len(matches["CRITIQUE"]) * 0.03)
+        elif matches["ATTENTION"]:
+            level, confidence = "ATTENTION", min(0.75, 0.58 + len(matches["ATTENTION"]) * 0.03)
+        else:
+            level, confidence = "INFO", 0.52
+
+        keywords = self._extract_keywords(text)
+        return AlertClassification(
+            level=level,
+            impact_score=self._calculate_impact_score(text, level, confidence),
+            confidence=confidence,
             keywords=keywords,
             reasoning=self._generate_reasoning(text, level, keywords),
         )

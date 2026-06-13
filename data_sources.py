@@ -499,6 +499,24 @@ DEMO_TRADE_DATA: Dict[str, list] = {
         {"country_code": "CIV", "country_name": "Côte d'Ivoire",   "value_usd":    600_000, "weight_kg":  23_000, "growth_pct":  9.0, "price_usd_kg": 26.1},
         {"country_code": "NGA", "country_name": "Nigeria",         "value_usd":    400_000, "weight_kg":  16_000, "growth_pct":  6.5, "price_usd_kg": 25.0},
     ],
+    # Huile d'olive (HS 1509) - fallback local pour scoring rapide
+    "1509": [
+        {"country_code": "FRA", "country_name": "France",          "value_usd": 42_000_000, "weight_kg": 9_800_000, "growth_pct":  6.8, "price_usd_kg": 4.29},
+        {"country_code": "DEU", "country_name": "Allemagne",       "value_usd": 31_500_000, "weight_kg": 7_400_000, "growth_pct":  5.9, "price_usd_kg": 4.26},
+        {"country_code": "USA", "country_name": "Etats-Unis",      "value_usd": 29_000_000, "weight_kg": 6_200_000, "growth_pct":  8.4, "price_usd_kg": 4.68},
+        {"country_code": "CAN", "country_name": "Canada",          "value_usd": 17_200_000, "weight_kg": 3_700_000, "growth_pct":  7.1, "price_usd_kg": 4.65},
+        {"country_code": "NLD", "country_name": "Pays-Bas",        "value_usd": 16_800_000, "weight_kg": 4_000_000, "growth_pct":  6.2, "price_usd_kg": 4.20},
+        {"country_code": "BEL", "country_name": "Belgique",        "value_usd": 14_700_000, "weight_kg": 3_400_000, "growth_pct":  5.4, "price_usd_kg": 4.32},
+        {"country_code": "GBR", "country_name": "Royaume-Uni",     "value_usd": 13_900_000, "weight_kg": 3_100_000, "growth_pct":  4.9, "price_usd_kg": 4.48},
+        {"country_code": "ESP", "country_name": "Espagne",         "value_usd": 12_600_000, "weight_kg": 3_000_000, "growth_pct":  2.8, "price_usd_kg": 4.20},
+        {"country_code": "ITA", "country_name": "Italie",          "value_usd": 10_800_000, "weight_kg": 2_500_000, "growth_pct":  3.1, "price_usd_kg": 4.32},
+        {"country_code": "SAU", "country_name": "Arabie Saoudite", "value_usd":  9_600_000, "weight_kg": 2_100_000, "growth_pct": 10.5, "price_usd_kg": 4.57},
+        {"country_code": "ARE", "country_name": "Emirats Arabes",  "value_usd":  8_900_000, "weight_kg": 1_850_000, "growth_pct": 11.8, "price_usd_kg": 4.81},
+        {"country_code": "QAT", "country_name": "Qatar",           "value_usd":  4_200_000, "weight_kg":   850_000, "growth_pct":  9.6, "price_usd_kg": 4.94},
+        {"country_code": "KWT", "country_name": "Koweit",          "value_usd":  3_800_000, "weight_kg":   820_000, "growth_pct":  8.7, "price_usd_kg": 4.63},
+        {"country_code": "SEN", "country_name": "Senegal",         "value_usd":  2_400_000, "weight_kg":   620_000, "growth_pct":  7.4, "price_usd_kg": 3.87},
+        {"country_code": "CIV", "country_name": "Cote d'Ivoire",   "value_usd":  1_900_000, "weight_kg":   500_000, "growth_pct":  6.5, "price_usd_kg": 3.80},
+    ],
     # Sardines en conserve (HS 160413)
     "160413": [
         {"country_code": "ESP", "country_name": "Espagne",         "value_usd": 85_000_000, "weight_kg": 42_000_000, "growth_pct": 2.1, "price_usd_kg": 2.02},
@@ -788,17 +806,39 @@ def _fetch_comtrade_raw(hs_code: str) -> Optional[list]:
     r.raise_for_status()
     return r.json().get("data", [])
 
-def get_trade_data(hs_code: str) -> pd.DataFrame:
+def get_trade_data(hs_code: str, force_refresh: bool = False) -> pd.DataFrame:
     """
     Récupère les données commerciales pour un code HS.
     Stratégie : cache → UN Comtrade API → Eurostat (si pays UE) → données intégrées.
     """
     PAYS_CONNUS = set(ACCORDS_MAROC.keys())
     cache_key = f"trade_{hs_code}"
+    if not force_refresh and hs_code in DEMO_TRADE_DATA:
+        logger.info(f"Local-first: données intégrées pour HS {hs_code}")
+        return pd.DataFrame(DEMO_TRADE_DATA[hs_code])
+
     cached = cache.get(cache_key, CACHE_TTL["trade"])
-    if cached and not cached.get("_stale"):
-        logger.info(f"Trade data depuis cache pour HS {hs_code}")
+    if cached and not force_refresh:
+        logger.info(f"Trade data local-first depuis cache pour HS {hs_code}")
+        if isinstance(cached, dict) and "_stale" in cached:
+            cached = {k: v for k, v in cached.items() if k != "_stale"}
         return pd.DataFrame(cached)
+
+    if not force_refresh:
+        logger.warning(f"Local-first: HS {hs_code} non reconnu, données génériques neutres")
+        generic = [
+            {
+                "country_code": c,
+                "country_name": PAYS_NOM.get(c, c),
+                "value_usd":    5_000_000,
+                "weight_kg":    1_000_000,
+                "growth_pct":   5.0,
+                "price_usd_kg": 5.0,
+            }
+            for c in list(PAYS_CONNUS)[:15]
+        ]
+        cache.set(cache_key, generic)
+        return pd.DataFrame(generic)
 
     # 1. UN Comtrade
     try:

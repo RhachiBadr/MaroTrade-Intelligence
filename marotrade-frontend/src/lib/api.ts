@@ -6,10 +6,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 // --- API Fetchers ---
 
-export async function fetchScore(payload: { hs_code: string; product_name: string; top_n: number }): Promise<MarketResult[]> {
+export async function fetchScore(payload: { hs_code: string; product_name: string; top_n: number; force_refresh?: boolean }): Promise<MarketResult[]> {
   try {
     const res = await fetch(`${API_URL}/api/score`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
@@ -30,6 +31,7 @@ export async function fetchAlerts(
   try {
     const res = await fetch(`${API_URL}/api/alerts`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ hs_code, product_name, target_countries, force_refresh })
     })
@@ -43,7 +45,9 @@ export async function fetchAlerts(
 
 export async function fetchForecast(hs_code: string, country: string): Promise<ForecastPoint[]> {
   try {
-    const res = await fetch(`${API_URL}/api/forecast?hs_code=${hs_code}&country=${country}`)
+    const res = await fetch(`${API_URL}/api/forecast?hs_code=${hs_code}&country=${country}`, {
+      credentials: 'include',
+    })
     if (!res.ok) throw new Error('API Error')
     const data = await res.json()
     return data.points

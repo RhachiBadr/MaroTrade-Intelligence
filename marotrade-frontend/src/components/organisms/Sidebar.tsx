@@ -13,10 +13,13 @@ import {
   BarChart3,
   Settings,
   CreditCard,
+  LogOut,
+  Building2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useShell } from '@/components/shell/shell-context'
 import { useState, type KeyboardEvent } from 'react'
+import { useAuth } from '@/components/auth/AuthProvider'
 
 const NAV_ITEMS = [
   { label: 'Tableau de bord', icon: LayoutDashboard, href: '/dashboard' },
@@ -37,6 +40,7 @@ export default function Sidebar() {
   const router = useRouter()
   const { mobileNavOpen, setMobileNavOpen } = useShell()
   const [fastAnalysis, setFastAnalysis] = useState('')
+  const { account, logout } = useAuth()
 
   function closeMobile() {
     setMobileNavOpen(false)
@@ -115,6 +119,17 @@ export default function Sidebar() {
       </div>
 
       <div className="mt-auto space-y-2 border-t border-border p-3">
+        <div className="rounded-xl border border-border bg-surface-elevated p-3">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-500/15 text-primary-400">
+              <Building2 className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-text-primary">{account?.organization.name}</p>
+              <p className="truncate text-[10px] text-text-muted">{account?.user.email}</p>
+            </div>
+          </div>
+        </div>
         <nav className="flex flex-col gap-0.5">
           {BOTTOM_ITEMS.map((item) => {
             const isActive = pathname === item.href
@@ -142,6 +157,17 @@ export default function Sidebar() {
           </div>
           <p className="mt-1 text-[11px] leading-snug text-text-muted">API et prévisions étendues.</p>
         </div>
+        <button
+          type="button"
+          onClick={async () => {
+            await logout()
+            router.replace('/login')
+          }}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-danger-500/10 hover:text-danger-500"
+        >
+          <LogOut className="h-4 w-4" />
+          Se déconnecter
+        </button>
       </div>
     </aside>
   )

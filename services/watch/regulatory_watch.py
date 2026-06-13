@@ -484,14 +484,21 @@ class RegulatoryWatchEngine:
     pertinentes pour un produit et des marchés cibles donnés.
     """
 
-    def __init__(self, use_nlp: bool = True):
+    def __init__(self, use_nlp: bool = True, lazy_nlp: bool = True):
         self.use_nlp = use_nlp
+        self.lazy_nlp = lazy_nlp
         self.nlp_analyzer = None
+        self._nlp_initialization_attempted = False
         self.rasff_client = RASFFStructuredClient()
 
-        if not self.use_nlp:
-            return
+        if self.use_nlp and not self.lazy_nlp:
+            self._initialize_nlp_analyzer()
 
+    def _initialize_nlp_analyzer(self):
+        """Initialise le pipeline NLP une seule fois, au premier besoin."""
+        if not self.use_nlp or self._nlp_initialization_attempted:
+            return self.nlp_analyzer
+        self._nlp_initialization_attempted = True
         try:
             from services.nlp import NLPAnalyzer
 
@@ -499,6 +506,7 @@ class RegulatoryWatchEngine:
         except Exception as exc:
             logger.exception("NLPAnalyzer initialization failed: %s", exc)
             self.nlp_analyzer = None
+        return self.nlp_analyzer
 
     @staticmethod
     def _as_text(value) -> str:
@@ -635,6 +643,7 @@ class RegulatoryWatchEngine:
         target_countries: list,
     ) -> list:
         logger.info("RegulatoryWatchEngine enriching alerts with NLPAnalyzer")
+        self._initialize_nlp_analyzer()
 
         if not self.nlp_analyzer:
             calibrated_alerts = []

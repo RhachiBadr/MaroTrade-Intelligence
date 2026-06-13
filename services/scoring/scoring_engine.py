@@ -30,9 +30,9 @@ from xgboost import XGBRegressor
 import shap
 
 from data_sources import (
-    get_trade_data, get_accord_score, get_wb_scores,
+    get_trade_data, get_accord_score,
     get_diaspora, get_logistique, get_trends, get_market_context,
-    ACCORDS_MAROC, PAYS_NOM, fetch_itc_price,
+    ACCORDS_MAROC, PAYS_NOM, fetch_itc_price, _WB_FALLBACK,
 )
 from external_api_manager import api_manager
 from dynamic_growth import enrich_with_growth, interpret_growth, growth_label
@@ -172,6 +172,11 @@ class MarketResult:
     score_ml_v6: Optional[float] = None
     scoring_method: str = "legacy_weighted_xgboost"
     v6_features_used: List[str] = field(default_factory=list)
+    v6_explanation: str = ""
+    v6_strengths: List[str] = field(default_factory=list)
+    v6_risks: List[str] = field(default_factory=list)
+    v6_feature_snapshot: dict = field(default_factory=dict)
+    data_freshness: dict = field(default_factory=dict)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -199,6 +204,7 @@ class MarketScoringEngine:
         self.v6_features: List[str] = []
         self.v6_target = ""
         self.v6_available = False
+        self._last_v6_feature_matrix: Optional[pd.DataFrame] = None
         self.wb_indicators = pd.DataFrame()
         self.ocde_risk = pd.DataFrame()
         self._load_v6_model()
@@ -278,6 +284,15 @@ class MarketScoringEngine:
         value = pd.to_numeric(row.iloc[0].get("ocde_risk_score"), errors="coerce")
         return float(fallback if pd.isna(value) else value)
 
+    def _get_wb_scores_fast(self, country_code: str) -> dict:
+        """Return local World Bank governance fallback without blocking API scoring."""
+        return _WB_FALLBACK.get(country_code, {
+            "ease_business": 55.0,
+            "political_stability": 40.0,
+            "rule_of_law": 50.0,
+            "regulatory_quality": 50.0,
+        })
+
     def build_v6_feature_matrix(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Build the 17 benchmark v6 features from the runtime market matrix.
@@ -351,6 +366,7 @@ class MarketScoringEngine:
             return None
         try:
             X = self.build_v6_feature_matrix(df)
+            self._last_v6_feature_matrix = X.copy()
             X_model = self.v6_preprocessor.transform(X) if self.v6_preprocessor is not None else X
             raw_scores = np.asarray(self.v6_model.predict(X_model), dtype=float)
             if len(raw_scores) == 0:
@@ -362,7 +378,189 @@ class MarketScoringEngine:
             return (raw_scores - min_score) / (max_score - min_score) * 100.0
         except Exception as exc:
             logger.exception("V6 market ranking inference failed, using legacy scoring: %s", exc)
+            self._last_v6_feature_matrix = None
             return None
+
+    def calibrate_v6_scores_for_pme(self, scores: np.ndarray, v6_features: pd.DataFrame) -> np.ndarray:
+        """
+        Apply a conservative business calibration for Moroccan SMEs.
+        The model remains the primary ranker, then the score is adjusted for
+        actionable export readiness: market size, risk, distance, tariffs, and data quality.
+        """
+        if v6_features is None or v6_features.empty:
+            return scores
+
+        calibrated = []
+        for score, (_, row) in zip(scores, v6_features.iterrows()):
+            value = float(row.get("log_value_usd", 0.0) or 0.0)
+            import_value = np.expm1(value)
+            distance = float(row.get("distance_km", 5000.0) or 5000.0)
+            droits = float(row.get("droits", 8.0) or 0.0)
+            ocde = float(row.get("ocde_risk_score", 3.0) or 3.0)
+            trend = float(row.get("trend_score", 50.0) or 50.0)
+            wb_available = float(row.get("wb_available", 0.0) or 0.0)
+            accord = float(row.get("accord_score", 0.0) or 0.0)
+            growth = float(row.get("growth_lag1", 0.0) or 0.0)
+
+            business_factor = 1.0
+
+            if import_value < 2_000_000:
+                business_factor -= 0.22
+            elif import_value < 5_000_000:
+                business_factor -= 0.10
+            elif import_value >= 15_000_000:
+                business_factor += 0.06
+
+            if ocde >= 5:
+                business_factor -= 0.22
+            elif ocde >= 3:
+                business_factor -= 0.08
+            elif ocde <= 1:
+                business_factor += 0.04
+
+            if distance > 7_000:
+                business_factor -= 0.12
+            elif distance > 4_500:
+                business_factor -= 0.06
+            elif distance <= 2_500:
+                business_factor += 0.04
+
+            if droits > 8:
+                business_factor -= 0.12
+            elif droits > 0:
+                business_factor -= 0.04
+            elif accord >= 100:
+                business_factor += 0.04
+
+            if trend < 40:
+                business_factor -= 0.06
+            elif trend >= 65:
+                business_factor += 0.03
+
+            if growth >= 8:
+                business_factor += 0.03
+            elif growth < 0:
+                business_factor -= 0.06
+
+            if wb_available <= 0:
+                business_factor -= 0.07
+
+            calibrated.append(float(score) * max(0.55, min(1.15, business_factor)))
+
+        calibrated = np.asarray(calibrated, dtype=float)
+        max_score = float(np.nanmax(calibrated)) if len(calibrated) else 0.0
+        if max_score > 0:
+            calibrated = calibrated / max_score * 100.0
+        return calibrated
+
+    def build_v6_explanation(self, row: pd.Series, v6_row: pd.Series, score: float) -> dict:
+        """Build business-readable explanations aligned with the v6 ranking features."""
+        value_usd = float(row.get("value_usd", 0.0) or 0.0)
+        growth = float(v6_row.get("growth_lag1", row.get("growth_pct", 0.0)) or 0.0)
+        market_share = float(v6_row.get("market_share", 0.0) or 0.0) * 100.0
+        cagr = float(v6_row.get("cagr_3y", 0.0) or 0.0) * 100.0
+        price = float(v6_row.get("price_usd_kg", row.get("price_usd_kg", 0.0)) or 0.0)
+        accord_score = float(v6_row.get("accord_score", 0.0) or 0.0)
+        droits = float(v6_row.get("droits", 0.0) or 0.0)
+        ocde = float(v6_row.get("ocde_risk_score", row.get("risk_category", 3.0)) or 3.0)
+        distance = float(v6_row.get("distance_km", row.get("distance_km", 0.0)) or 0.0)
+        trend = float(v6_row.get("trend_score", row.get("tendance", 50.0)) or 50.0)
+        gdp = float(v6_row.get("wb_gdp_per_capita", 0.0) or 0.0)
+        imports_gdp = float(v6_row.get("wb_imports_pct_gdp", 0.0) or 0.0)
+        wb_available = int(float(v6_row.get("wb_available", 0.0) or 0.0))
+
+        strengths = []
+        risks = []
+
+        if value_usd >= 5_000_000:
+            strengths.append(f"Demande import significative ({value_usd / 1_000_000:.1f}M USD).")
+        elif value_usd < 1_000_000:
+            risks.append(f"Marché encore limité en volume ({value_usd / 1_000_000:.1f}M USD).")
+
+        if growth >= 8:
+            strengths.append(f"Dynamique récente favorable (+{growth:.1f}% estimée).")
+        elif growth < 0:
+            risks.append(f"Dynamique récente négative ({growth:.1f}%).")
+
+        if cagr >= 5:
+            strengths.append(f"Tendance 3 ans positive (CAGR {cagr:.1f}%).")
+        elif cagr < -3:
+            risks.append(f"Tendance 3 ans en recul (CAGR {cagr:.1f}%).")
+
+        if accord_score >= 100 or droits <= 0:
+            strengths.append("Accord commercial favorable avec droits de douane nuls.")
+        elif droits > 10:
+            risks.append(f"Droits de douane élevés ({droits:.1f}%).")
+        elif droits > 0:
+            risks.append(f"Droits de douane à intégrer dans la marge ({droits:.1f}%).")
+
+        if ocde <= 2:
+            strengths.append(f"Risque pays faible selon le profil OCDE ({ocde:.0f}).")
+        elif ocde >= 5:
+            risks.append(f"Risque pays élevé selon le profil OCDE ({ocde:.0f}).")
+
+        if distance and distance <= 2_500:
+            strengths.append(f"Proximité logistique favorable ({distance:,.0f} km).")
+        elif distance >= 5_000:
+            risks.append(f"Distance logistique importante ({distance:,.0f} km).")
+
+        if trend >= 65:
+            strengths.append(f"Signal de demande digitale positif ({trend:.0f}/100).")
+        elif trend < 40:
+            risks.append(f"Signal de demande digitale faible ({trend:.0f}/100).")
+
+        if gdp >= 30_000 or imports_gdp >= 35:
+            strengths.append("Contexte macroéconomique favorable pour l'importation.")
+        if not wb_available:
+            risks.append("Certaines données macro récentes sont manquantes, score calculé avec fallback.")
+
+        if price > 0:
+            strengths.append(f"Prix observé exploitable pour positionner l'offre ({price:.2f} USD/kg).")
+
+        strengths = strengths[:4]
+        risks = risks[:3]
+
+        if not strengths:
+            strengths.append("Le modèle v6 détecte une combinaison favorable de signaux commerciaux.")
+        if not risks:
+            risks.append("Aucun frein majeur détecté par les indicateurs v6, à valider commercialement.")
+
+        country = row.get("country_name", row.get("country_code", "ce marché"))
+        explanation = (
+            f"{country} obtient un score v6 de {score:.1f}/100. "
+            f"Le classement est basé sur la demande import, la dynamique historique, "
+            f"les accords/droits, le risque pays, la distance, les signaux de tendance "
+            f"et les indicateurs macro disponibles."
+        )
+
+        snapshot = {
+            "import_value_usd": round(value_usd, 2),
+            "growth_lag1_pct": round(growth, 2),
+            "market_share_pct": round(market_share, 3),
+            "cagr_3y_pct": round(cagr, 2),
+            "price_usd_kg": round(price, 3),
+            "accord_score": round(accord_score, 1),
+            "droits_pct": round(droits, 2),
+            "ocde_risk_score": round(ocde, 1),
+            "distance_km": round(distance, 0),
+            "trend_score": round(trend, 1),
+            "wb_gdp_per_capita": round(gdp, 2),
+            "wb_imports_pct_gdp": round(imports_gdp, 2),
+            "wb_available": bool(wb_available),
+        }
+
+        return {
+            "explanation": explanation,
+            "strengths": strengths,
+            "risks": risks,
+            "feature_snapshot": snapshot,
+            "data_freshness": {
+                "trade_data": "données locales ou cache récent",
+                "worldbank": "référence locale récente",
+                "ocde_risk": "référence locale récente",
+                "trend": "signal calculé ou mis en cache",
+            },
+        }
 
     def _get_weights(self, hs_code: str) -> dict:
         """Retourne les poids adaptés au type de produit."""
@@ -383,7 +581,7 @@ class MarketScoringEngine:
             code = row["country_code"]
 
             accord   = get_accord_score(code)
-            wb       = get_wb_scores(code)
+            wb       = self._get_wb_scores_fast(code)
             diaspora = get_diaspora(code)
             logist   = get_logistique(code)
             trends   = get_trends(code, self._hs_code)
@@ -957,6 +1155,7 @@ class MarketScoringEngine:
         hs_code: str,
         top_n: int = 5,
         cout_production_usd_kg: float = 8.0,
+        force_refresh: bool = False,
     ) -> List[MarketResult]:
         """
         Pipeline complet de scoring export.
@@ -978,11 +1177,11 @@ class MarketScoringEngine:
 
         # ① Données commerciales
         logger.info("  Étape 1/6 — Données commerciales...")
-        trade_df = get_trade_data(hs_code)
+        trade_df = get_trade_data(hs_code, force_refresh=force_refresh)
 
         # ② Enrichissement croissance dynamique
         logger.info("  Étape 2/6 — CAGR dynamique 3 ans...")
-        trade_df = enrich_with_growth(trade_df, hs_code, set(ACCORDS_MAROC.keys()))
+        trade_df = enrich_with_growth(trade_df, hs_code, set(ACCORDS_MAROC.keys()), force_refresh=force_refresh)
 
         # ③ Matrice de features (7 dimensions)
         logger.info("  Étape 3/6 — Construction matrice features...")
@@ -1010,11 +1209,12 @@ class MarketScoringEngine:
             final_scores = final_scores / final_scores.max() * 100.0
 
         v6_scores = self.predict_v6_scores(df)
+        v6_feature_matrix = self._last_v6_feature_matrix
         scoring_method = "legacy_weighted_xgboost"
         if v6_scores is not None:
-            final_scores = v6_scores
+            final_scores = self.calibrate_v6_scores_for_pme(v6_scores, v6_feature_matrix)
             scoring_method = "v6_market_attractiveness"
-            logger.info("Using v6 market ranking model for final market ranking")
+            logger.info("Using v6 market ranking model with SME calibration for final market ranking")
         else:
             logger.info("Using legacy weighted/XGBoost ranking")
 
@@ -1029,6 +1229,18 @@ class MarketScoringEngine:
             shap_dict  = self.build_shap_dict(shap_vals, idx)
             atouts, risques = self.extract_atouts_risques(dims, shap_dict)
             narrative  = self.build_shap_narrative(shap_dict, row["country_name"])
+            v6_context = {
+                "explanation": "",
+                "strengths": [],
+                "risks": [],
+                "feature_snapshot": {},
+                "data_freshness": {},
+            }
+            if scoring_method == "v6_market_attractiveness" and v6_feature_matrix is not None:
+                v6_context = self.build_v6_explanation(row, v6_feature_matrix.iloc[idx], float(final_scores[idx]))
+                atouts = v6_context["strengths"]
+                risques = v6_context["risks"]
+                narrative = v6_context["explanation"]
             confidence = self._compute_confidence(row)
             rentab     = self.simulate_rentabilite(row, cout_production_usd_kg)
 
@@ -1071,6 +1283,11 @@ class MarketScoringEngine:
                 score_ml_v6=round(float(final_scores[idx]), 1) if scoring_method == "v6_market_attractiveness" else None,
                 scoring_method=scoring_method,
                 v6_features_used=list(self.v6_features) if scoring_method == "v6_market_attractiveness" else [],
+                v6_explanation=v6_context["explanation"],
+                v6_strengths=v6_context["strengths"],
+                v6_risks=v6_context["risks"],
+                v6_feature_snapshot=v6_context["feature_snapshot"],
+                data_freshness=v6_context["data_freshness"],
             ))
 
         elapsed = time.time() - t_start

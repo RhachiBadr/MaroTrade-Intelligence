@@ -1,6 +1,7 @@
 'use client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import { AuthProvider } from '@/components/auth/AuthProvider'
 
 type Theme = 'dark' | 'light'
 
@@ -53,9 +54,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={qc}>
-      <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
-        {children}
-      </ThemeContext.Provider>
+      <AuthProvider>
+        <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+          {children}
+        </ThemeContext.Provider>
+      </AuthProvider>
     </QueryClientProvider>
   )
 }

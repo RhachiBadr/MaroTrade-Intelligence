@@ -3,13 +3,22 @@ import json
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from dotenv import load_dotenv
+
+# Charge explicitement la configuration du projet avant Prisma et les services.
+# override=True evite qu'une ancienne DATABASE_URL heritee du terminal soit utilisee.
+load_dotenv(Path(__file__).resolve().parent / ".env", override=True)
 
 # Import modules from the current backend
 from services.cache import CacheService
+from services.auth import router as auth_router
+from services.auth.repository import auth_repository
+from services.auth.security import AuthContext, get_current_auth
 
 try:
     from services import MarketScoringEngine, RegulatoryWatchEngine
@@ -43,6 +52,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(auth_router)
 
 # --- Pydantic Models for Input ---
 
@@ -50,6 +60,7 @@ class ScoreRequest(BaseModel):
     hs_code: str
     product_name: str
     top_n: int = 5
+    force_refresh: bool = False
 
 class AlertsRequest(BaseModel):
     hs_code: str
@@ -113,6 +124,11 @@ def _nlp_health() -> Dict[str, Any]:
 
     return {
         "available": bool(nlp_analyzer),
+        "lazy": bool(
+            watch_engine
+            and getattr(watch_engine, "use_nlp", False)
+            and not getattr(watch_engine, "_nlp_initialization_attempted", False)
+        ),
         "opensource_analyzer": bool(opensource),
         "local_classifier": bool(getattr(classifier, "local_model_available", False)),
         "model_path": str(getattr(classifier, "model_path", "")) if classifier else "",
@@ -134,8 +150,15 @@ async def lifespan(app: FastAPI):
         scoring_engine = MarketScoringEngine()
     if RegulatoryWatchEngine:
         print("Initialisation du RegulatoryWatchEngine...")
-        watch_engine = RegulatoryWatchEngine()
+        watch_engine = RegulatoryWatchEngine(
+            use_nlp=os.getenv("WATCH_NLP_ENABLED", "true").lower() == "true",
+            lazy_nlp=os.getenv("WATCH_NLP_LAZY_LOAD", "true").lower() == "true",
+        )
+    await auth_repository.connect()
+    if not auth_repository.available:
+        print(f"Authentification DB indisponible: {auth_repository.error}")
     yield
+    await auth_repository.disconnect()
     print("Arrêt de l'API...")
 
 app.router.lifespan_context = lifespan
@@ -143,13 +166,18 @@ app.router.lifespan_context = lifespan
 # --- API Endpoints ---
 
 @app.post("/api/score")
-def get_score(req: ScoreRequest):
+async def get_score(req: ScoreRequest, auth: AuthContext = Depends(get_current_auth)):
     if not scoring_engine:
         raise HTTPException(status_code=500, detail="Moteur de scoring non chargé.")
     
     # Exécution du scoring v2.0
     try:
-        results = scoring_engine.run(req.product_name, req.hs_code, top_n=req.top_n)
+        results = scoring_engine.run(
+            req.product_name,
+            req.hs_code,
+            top_n=req.top_n,
+            force_refresh=req.force_refresh,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
@@ -183,6 +211,11 @@ def get_score(req: ScoreRequest):
             "score_ml_v6": float(r.score_ml_v6) if r.score_ml_v6 is not None else None,
             "scoring_method": str(getattr(r, "scoring_method", "legacy_weighted_xgboost")),
             "v6_features_used": list(getattr(r, "v6_features_used", [])),
+            "v6_explanation": str(getattr(r, "v6_explanation", "")),
+            "v6_strengths": list(getattr(r, "v6_strengths", [])),
+            "v6_risks": list(getattr(r, "v6_risks", [])),
+            "v6_feature_snapshot": dict(getattr(r, "v6_feature_snapshot", {})),
+            "data_freshness": dict(getattr(r, "data_freshness", {})),
             "dimensions": dims,
             "shap_values": {str(k): float(v) for k, v in r.shap_values.items()},
             "top_atouts": list(r.top_atouts),
@@ -194,7 +227,37 @@ def get_score(req: ScoreRequest):
                 "cout_conteneur": float(r.logistique_info.get('cout_conteneur_usd', 0))
             }
         })
+    await auth_repository.save_workspace_analysis(
+        user_id=auth.user_id,
+        organization_id=auth.organization_id,
+        product_name=req.product_name,
+        hs_code=req.hs_code,
+        top_n=req.top_n,
+        results=response_data,
+    )
     return response_data
+
+
+@app.get("/api/me/analyses")
+async def get_my_analyses(limit: int = 30, auth: AuthContext = Depends(get_current_auth)):
+    analyses = await auth_repository.list_workspace_analyses(auth.organization_id, take=limit)
+    return [
+        {
+            "id": analysis.id,
+            "product_name": analysis.productName,
+            "hs_code": analysis.hsCode,
+            "top_n": analysis.topN,
+            "results": analysis.results,
+            "created_at": analysis.createdAt.isoformat(),
+        }
+        for analysis in analyses
+    ]
+
+
+@app.delete("/api/me/analyses/{analysis_id}", status_code=204)
+async def delete_my_analysis(analysis_id: str, auth: AuthContext = Depends(get_current_auth)):
+    if not await auth_repository.delete_workspace_analysis(analysis_id, auth.organization_id):
+        raise HTTPException(status_code=404, detail="Analyse introuvable dans votre espace PME.")
 
 
 @app.post("/api/alerts")
@@ -213,7 +276,7 @@ def get_alerts(req: AlertsRequest):
     try:
         alerts = watch_engine.run(req.hs_code, req.product_name, req.target_countries)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Echec de la veille reglementaire: {e}")
+        raise HTTPException(status_code=500, detail=f"Échec de la veille réglementaire : {e}")
         
     # Transformation
     response_data = []

@@ -1,23 +1,21 @@
-version: '3.8'
-
 services:
   # Base de données PostgreSQL - Étape 4
   postgres:
     image: postgres:15-alpine
     container_name: marotrade-postgres
     environment:
-      POSTGRES_DB: marotrade
-      POSTGRES_USER: marotrade
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: marotrade_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./prisma/migrations:/docker-entrypoint-initdb.d
     networks:
       - marotrade-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U marotrade -d marotrade"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d marotrade_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -43,7 +41,7 @@ services:
     build: .
     container_name: marotrade-api
     environment:
-      - DATABASE_URL=postgresql://marotrade:password@postgres:5432/marotrade
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/marotrade_db?schema=public
       - REDIS_URL=redis://redis:6379
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}

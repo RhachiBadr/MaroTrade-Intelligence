@@ -4,7 +4,8 @@
 // ═══════════════════════════════════════════════════════════════
 
 generator client {
-  provider = "prisma-client-js"
+  provider             = "prisma-client-py"
+  recursive_type_depth = 5
 }
 
 datasource db {
@@ -51,6 +52,19 @@ enum UserRole {
   ADMIN         // Administrateur plateforme
 }
 
+enum OrganizationType {
+  PME
+  COOPERATIVE
+  EXPORTER
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
 enum AnalysisStatus {
   PENDING
   RUNNING
@@ -74,16 +88,22 @@ model User {
   id            String    @id @default(cuid())
   email         String    @unique
   name          String
-  company       String?   // Nom de l'entreprise PME
   role          UserRole  @default(PME)
   password      String    // Hash bcrypt
+  emailVerified Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  // Relations existantes
-  analyses           Analysis[]
-  savedMarkets       SavedMarket[]
-  alertSubscriptions AlertSubscription[]
+  memberships            Membership[]
+  analyses               Analysis[]
+  workspaceAnalyses      WorkspaceAnalysis[]
+  savedMarkets           SavedMarket[]
+  alertSubscriptions     AlertSubscription[]
+  refreshTokens          RefreshToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens    PasswordResetToken[]
 
   // Nouvelles relations (Extensions)
   readinessScore     ExportReadinessScore?
@@ -91,6 +111,90 @@ model User {
   exportProjects     ExportProject[]
 
   @@map("users")
+}
+
+model Organization {
+  id               String           @id @default(cuid())
+  name             String
+  slug             String           @unique
+  type             OrganizationType @default(PME)
+  country          String           @default("Maroc")
+  city             String?
+  sector           String?
+  size             String?
+  products         String[]
+  targetMarkets    String[]
+  exportExperience String?
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  memberships       Membership[]
+  analyses          Analysis[]
+  workspaceAnalyses WorkspaceAnalysis[]
+  savedMarkets      SavedMarket[]
+  alertSubscriptions AlertSubscription[]
+
+  @@index([slug])
+  @@map("organizations")
+}
+
+model Membership {
+  id             String         @id @default(cuid())
+  userId         String
+  organizationId String
+  role           MembershipRole @default(MEMBER)
+  createdAt      DateTime       @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("memberships")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -201,6 +305,7 @@ model Country {
 model Analysis {
   id          String         @id @default(cuid())
   userId      String?
+  organizationId String?
   productId   String
   productName String         // Nom saisi par l'utilisateur
   hsCode      String         // Code HS utilisé
@@ -220,13 +325,33 @@ model Analysis {
   updatedAt   DateTime @updatedAt
 
   user          User?          @relation(fields: [userId], references: [id])
+  organization  Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   product       Product        @relation(fields: [productId], references: [id])
   results       ScoringResult[]
 
   @@index([userId])
+  @@index([organizationId])
   @@index([productId])
   @@index([createdAt])
   @@map("analyses")
+}
+
+model WorkspaceAnalysis {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  productName    String
+  hsCode         String
+  topN           Int
+  results        Json
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([userId])
+  @@map("workspace_analyses")
 }
 
 model ScoringResult {
@@ -420,31 +545,37 @@ model RegulatoryAlertCountry {
 model AlertSubscription {
   id        String   @id @default(cuid())
   userId    String
+  organizationId String?
   countryId String?  
   hsCode    String?  
   minLevel  AlertLevel @default(ATTENTION) 
   createdAt DateTime @default(now())
 
   user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   country Country?        @relation(fields: [countryId], references: [id])
   alerts  RegulatoryAlert[] 
 
   @@unique([userId, countryId, hsCode])
+  @@index([organizationId])
   @@map("alert_subscriptions")
 }
 
 model SavedMarket {
   id        String   @id @default(cuid())
   userId    String
+  organizationId String?
   countryId String
   hsCode    String   
   notes     String?  
   createdAt DateTime @default(now())
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   country Country @relation(fields: [countryId], references: [id])
 
   @@unique([userId, countryId, hsCode])
+  @@index([organizationId])
   @@map("saved_markets")
 }
 

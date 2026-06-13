@@ -14,22 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" suppressHydrationWarning data-scroll-behavior="smooth">
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                if (localStorage.theme === 'light') {
-                  document.documentElement.classList.remove('dark')
-                } else {
-                  document.documentElement.classList.add('dark')
-                }
-              } catch (_) {}
-            `,
-          }}
-        />
-      </head>
-      <body className={`${inter.variable} font-sans bg-background text-text-primary antialiased selection:bg-primary-500 selection:text-white transition-colors duration-200`}>
+      <body className={`${inter.variable} bg-background font-sans text-text-primary antialiased selection:bg-primary-500 selection:text-white transition-colors duration-200`}>
         <Providers>
           <ConditionalRoot>{children}</ConditionalRoot>
         </Providers>

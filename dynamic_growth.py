@@ -54,6 +54,24 @@ GROWTH_FALLBACK = {
         "QAT": {"cagr":  8.5, "velocity":  0.9, "momentum":  9.4},
         "KWT": {"cagr":  7.3, "velocity":  0.5, "momentum":  7.8},
     },
+    # Huile d'olive (1509)
+    "1509": {
+        "FRA": {"cagr":  6.8, "velocity":  0.7, "momentum":  7.6},
+        "DEU": {"cagr":  5.9, "velocity":  0.4, "momentum":  6.3},
+        "USA": {"cagr":  8.4, "velocity":  1.3, "momentum":  9.8},
+        "CAN": {"cagr":  7.1, "velocity":  0.9, "momentum":  8.1},
+        "NLD": {"cagr":  6.2, "velocity":  0.5, "momentum":  6.8},
+        "BEL": {"cagr":  5.4, "velocity":  0.2, "momentum":  5.6},
+        "GBR": {"cagr":  4.9, "velocity": -0.1, "momentum":  4.8},
+        "ESP": {"cagr":  2.8, "velocity": -0.8, "momentum":  2.0},
+        "ITA": {"cagr":  3.1, "velocity": -0.5, "momentum":  2.6},
+        "SAU": {"cagr": 10.5, "velocity":  1.9, "momentum": 12.6},
+        "ARE": {"cagr": 11.8, "velocity":  2.4, "momentum": 14.5},
+        "QAT": {"cagr":  9.6, "velocity":  1.5, "momentum": 11.2},
+        "KWT": {"cagr":  8.7, "velocity":  1.1, "momentum": 10.0},
+        "SEN": {"cagr":  7.4, "velocity":  0.8, "momentum":  8.3},
+        "CIV": {"cagr":  6.5, "velocity":  0.5, "momentum":  7.0},
+    },
     # ── Sardines (160413) ──────────────────────────────────────
     "160413": {
         "ESP": {"cagr":  2.1, "velocity": -0.8, "momentum":  1.3},
@@ -289,7 +307,7 @@ def fetch_yearly_data(hs_code: str, year: int) -> dict:
         return {}
 
 
-def fetch_growth_data(hs_code: str, known_countries: set) -> dict:
+def fetch_growth_data(hs_code: str, known_countries: set, force_refresh: bool = False) -> dict:
     """
     Récupère et calcule les métriques de croissance pour tous les pays.
 
@@ -310,7 +328,7 @@ def fetch_growth_data(hs_code: str, known_countries: set) -> dict:
     cache_path = CACHE_DIR / f"{cache_key}.json"
 
     # Cache 7 jours pour les données de croissance calculées
-    if cache_path.exists():
+    if cache_path.exists() and not force_refresh:
         try:
             with open(cache_path) as f:
                 cached = json.load(f)
@@ -320,6 +338,10 @@ def fetch_growth_data(hs_code: str, known_countries: set) -> dict:
                 return cached["data"]
         except Exception:
             pass
+
+    if not force_refresh:
+        print(f"     Croissance: local-first fallback ({hs_code})")
+        return GROWTH_FALLBACK.get(hs_code, {})
 
     # Récupérer les 3 années
     print(f"     Croissance: récupération 2020-2021-2022 via UN Comtrade...")
@@ -390,7 +412,7 @@ def fetch_growth_data(hs_code: str, known_countries: set) -> dict:
 # ENRICHISSEMENT DU DATAFRAME
 # ═══════════════════════════════════════════════════════════════
 
-def enrich_with_growth(df: pd.DataFrame, hs_code: str, known_countries: set) -> pd.DataFrame:
+def enrich_with_growth(df: pd.DataFrame, hs_code: str, known_countries: set, force_refresh: bool = False) -> pd.DataFrame:
     """
     Enrichit le DataFrame de pays avec les métriques de croissance dynamiques.
 
@@ -407,7 +429,7 @@ def enrich_with_growth(df: pd.DataFrame, hs_code: str, known_countries: set) -> 
     Returns:
         DataFrame enrichi avec colonnes growth_pct, velocity, momentum
     """
-    growth_data = fetch_growth_data(hs_code, known_countries)
+    growth_data = fetch_growth_data(hs_code, known_countries, force_refresh=force_refresh)
 
     cagg_list     = []
     velocity_list = []

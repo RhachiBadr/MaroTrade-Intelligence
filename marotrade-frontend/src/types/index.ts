@@ -24,6 +24,14 @@ export interface MarketResult {
   score_final:    number
   score_weighted: number
   score_xgboost:  number
+  score_ml_v6?:   number | null
+  scoring_method?: string
+  v6_features_used?: string[]
+  v6_explanation?: string
+  v6_strengths?: string[]
+  v6_risks?: string[]
+  v6_feature_snapshot?: Record<string, number | boolean | string>
+  data_freshness?: Record<string, string>
   dimensions:     Dimension[]
   shap_values:    Record<string, number>
   top_atouts:     string[]
