@@ -5,7 +5,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -19,6 +20,7 @@ from services.cache import CacheService
 from services.auth import router as auth_router
 from services.auth.repository import auth_repository
 from services.auth.security import AuthContext, get_current_auth
+from services.i18n import localize_api_message, request_locale
 
 try:
     from services import MarketScoringEngine, RegulatoryWatchEngine
@@ -53,6 +55,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(auth_router)
+
+
+@app.exception_handler(HTTPException)
+async def localized_http_exception_handler(request: Request, exc: HTTPException):
+    """Translate user-facing API errors without changing endpoint behavior."""
+    locale = request_locale(request.headers.get("accept-language"))
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": localize_api_message(exc.detail, locale)},
+        headers=exc.headers,
+    )
 
 # --- Pydantic Models for Input ---
 
@@ -99,6 +112,7 @@ def _alert_number_value(value, default: float = 0.0) -> float:
 
 def _alerts_cache_key(req: AlertsRequest) -> str:
     payload = {
+        "presentation_version": 3,
         "hs_code": req.hs_code.strip(),
         "product_name": req.product_name.strip().lower(),
         "target_countries": sorted(country.strip().upper() for country in req.target_countries),
@@ -326,7 +340,10 @@ def get_alerts(req: AlertsRequest):
             ),
             "nlp_enhanced": bool(get_alert_value(a, "nlp_enhanced", False)),
             "raw_nlp_level": _alert_text_value(get_alert_value(a, "raw_nlp_level", "")),
+            "model_nlp_level": _alert_text_value(get_alert_value(a, "model_nlp_level", "")),
+            "classification_basis": _alert_text_value(get_alert_value(a, "classification_basis", "")),
             "calibration_reason": _alert_text_value(get_alert_value(a, "calibration_reason", "")),
+            "business_explanation": _alert_text_value(get_alert_value(a, "business_explanation", "")),
             "category": _alert_text_value(get_alert_value(a, "category", "")),
             "classification": _alert_text_value(get_alert_value(a, "classification", "")),
             "origin": _alert_text_value(get_alert_value(a, "origin", "")),

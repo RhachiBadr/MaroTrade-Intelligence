@@ -7,17 +7,19 @@ import { MOCK_RESULTS, MOCK_FORECAST } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { TrendingUp, Globe, Target } from 'lucide-react'
 import { PageContainer, PageHeader } from '@/components/ui/page-shell'
+import { useI18n } from '@/lib/i18n'
 import { Card, CardContent } from '@/components/ui/card'
 
 export default function ForecastPage() {
+  const { t } = useI18n()
   const [selectedIdx, setSelectedIdx] = useState(0)
   const result = MOCK_RESULTS[selectedIdx]
 
   return (
     <PageContainer className="max-w-5xl space-y-8 py-2">
       <PageHeader
-        title="Prévisions de marché"
-        description="Modélisation Prophet · données UN Comtrade · intervalle de confiance affiché sur le graphique."
+        title={t('pages.forecastTitle')}
+        description={t('pages.forecastSubtitle')}
       />
 
       <div className="flex flex-wrap gap-2">

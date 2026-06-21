@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { BrandLogo } from '@/components/brand/BrandLogo'
 
 const NAV = [
   { href: '/',            label: 'Accueil'      },
@@ -29,7 +30,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl">🇲🇦</span>
+            <BrandLogo size="sm" priority />
             <span className="font-display font-bold text-marine-900 dark:text-white text-lg">MaroTrade</span>
             <span className="hidden sm:inline text-xs font-medium text-export-500 bg-export-50 dark:bg-export-900/30 px-2 py-0.5 rounded-full">Intelligence</span>
           </Link>

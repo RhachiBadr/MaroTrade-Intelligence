@@ -84,6 +84,7 @@ _HS_PROFILES: Dict[str, str] = {
     "080410":   "terroir_premium",   # Dattes premium
     "570110":   "artisanat",         # Tapis berbère
     "691010":   "artisanat",         # Zellige
+    "4205":     "artisanat",         # Autres articles en cuir
     "160413":   "agroalimentaire",   # Sardines
     "090920":   "agroalimentaire",   # Cumin/épices bulk
 }
@@ -404,8 +405,12 @@ class MarketScoringEngine:
 
             business_factor = 1.0
 
-            if import_value < 2_000_000:
-                business_factor -= 0.22
+            if import_value < 100_000:
+                business_factor -= 0.65
+            elif import_value < 500_000:
+                business_factor -= 0.45
+            elif import_value < 2_000_000:
+                business_factor -= 0.25
             elif import_value < 5_000_000:
                 business_factor -= 0.10
             elif import_value >= 15_000_000:
@@ -445,7 +450,51 @@ class MarketScoringEngine:
             if wb_available <= 0:
                 business_factor -= 0.07
 
-            calibrated.append(float(score) * max(0.55, min(1.15, business_factor)))
+            adjusted_score = float(score) * max(0.20, min(1.15, business_factor))
+            # A very high relative growth rate on a negligible base is not an
+            # actionable export opportunity for an SME. Apply absolute caps
+            # before the final normalization to keep the Top 5 commercially useful.
+            if import_value < 100_000:
+                adjusted_score = min(adjusted_score, 8.0)
+            elif import_value < 500_000:
+                adjusted_score = min(adjusted_score, 15.0)
+            elif import_value < 2_000_000:
+                adjusted_score = min(adjusted_score, 25.0)
+
+            market_size_score = min(np.sqrt(max(import_value, 0.0) / 15_000_000.0) * 100.0, 100.0)
+            if distance <= 1_000:
+                distance_score = 100.0
+            elif distance <= 2_500:
+                distance_score = 80.0
+            elif distance <= 4_500:
+                distance_score = 60.0
+            elif distance <= 7_000:
+                distance_score = 35.0
+            else:
+                distance_score = 15.0
+
+            growth_score = float(np.clip((growth + 10.0) / 40.0 * 100.0, 0.0, 100.0))
+            if droits <= 0:
+                tariff_score = 100.0
+            elif droits <= 5:
+                tariff_score = 75.0
+            elif droits <= 10:
+                tariff_score = 50.0
+            else:
+                tariff_score = 20.0
+            risk_score = float(np.clip(100.0 - ocde * 12.0, 0.0, 100.0))
+            data_score = 100.0 if wb_available > 0 else 35.0
+
+            sme_readiness_score = (
+                market_size_score * 0.32
+                + growth_score * 0.20
+                + distance_score * 0.18
+                + tariff_score * 0.18
+                + risk_score * 0.08
+                + data_score * 0.04
+            )
+
+            calibrated.append(adjusted_score * 0.40 + sme_readiness_score * 0.60)
 
         calibrated = np.asarray(calibrated, dtype=float)
         max_score = float(np.nanmax(calibrated)) if len(calibrated) else 0.0
@@ -1248,7 +1297,8 @@ class MarketScoringEngine:
             zone = row.get("accord_zone", "OTHER")
             certif_zone = {"UE": "UE", "EUR": "UE", "AME": "USA", "MENA": "GAFTA"}.get(zone, "UE")
             from data_sources import get_certifications_requises
-            certifications = get_certifications_requises(certif_zone, "alimentaire")
+            certification_category = "artisanat" if profile == "artisanat" else "alimentaire"
+            certifications = get_certifications_requises(certif_zone, certification_category)
 
             # Alerte paiement
             risk_cat = int(row.get("risk_category", 0))

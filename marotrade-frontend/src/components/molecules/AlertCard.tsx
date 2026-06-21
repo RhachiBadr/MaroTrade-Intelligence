@@ -12,6 +12,7 @@ import {
   Gauge,
   Tags,
 } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   alert: RegulatoryAlert
@@ -20,6 +21,7 @@ interface Props {
 
 /** Card for a single regulatory alert */
 export function AlertCard({ alert, className }: Props) {
+  const { t, formatDate } = useI18n()
   const {
     titre,
     niveau,
@@ -38,7 +40,10 @@ export function AlertCard({ alert, className }: Props) {
     resume_fr,
     nlp_enhanced,
     raw_nlp_level,
+    model_nlp_level,
+    classification_basis,
     calibration_reason,
+    business_explanation,
     category,
     classification,
     origin,
@@ -52,6 +57,7 @@ export function AlertCard({ alert, className }: Props) {
   const displayedDelay = typeof delai_jours === 'number' ? delai_jours : Number(delai_jours || 0)
   const hasAdjustedLevel = raw_nlp_level && raw_nlp_level !== niveau
   const analysisInsight = (() => {
+    if (business_explanation) return business_explanation
     const calibration = (calibration_reason || '').toLowerCase()
     if (product_match === false && calibration.includes('hors produit')) {
       return 'Priorité ajustée : alerte sanitaire détectée, mais le produit surveillé est hors périmètre.'
@@ -103,7 +109,7 @@ export function AlertCard({ alert, className }: Props) {
         {(llm_enhanced || nlp_enhanced) && (
           <div className="px-3 py-1 rounded-full bg-secondary text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
             <BrainCircuit className="h-3 w-3" />
-            NLP enrichi
+            {t('regulations.nlpEnhanced')}
           </div>
         )}
 
@@ -111,7 +117,7 @@ export function AlertCard({ alert, className }: Props) {
           <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{source}</span>
           <div className="flex items-center gap-1.5 text-text-muted">
             <Calendar className="w-3 h-3" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">{date.slice(0, 10)}</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">{date ? formatDate(date) : ''}</span>
           </div>
         </div>
       </div>
@@ -127,13 +133,13 @@ export function AlertCard({ alert, className }: Props) {
       <div className="flex items-center justify-between pt-4 border-t border-border/50">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex flex-col">
-            <span className="text-[9px] font-black text-text-muted uppercase tracking-tighter mb-0.5">Impact Score</span>
+            <span className="text-[9px] font-black text-text-muted uppercase tracking-tighter mb-0.5">{t('regulations.impactScore')}</span>
             <span className="text-sm font-black text-text-primary">{displayedImpact}/100</span>
           </div>
 
           {displayedConfidence !== null && (
             <div className="flex flex-col border-l border-border pl-4">
-              <span className="text-[9px] font-black text-text-muted uppercase tracking-tighter mb-0.5">Confiance NLP</span>
+              <span className="text-[9px] font-black text-text-muted uppercase tracking-tighter mb-0.5">{t('regulations.confidence')}</span>
               <span className="flex items-center gap-1 text-sm font-black text-text-primary">
                 <Gauge className="h-3.5 w-3.5 text-primary" />
                 {displayedConfidence}%
@@ -153,7 +159,7 @@ export function AlertCard({ alert, className }: Props) {
 
           {typeof relevance === 'number' && relevance > 0 && (
             <div className="flex flex-col border-l border-border pl-4">
-              <span className="text-[9px] font-black text-text-muted uppercase tracking-tighter mb-0.5">Pertinence</span>
+              <span className="text-[9px] font-black text-text-muted uppercase tracking-tighter mb-0.5">{t('regulations.relevance')}</span>
               <span className="text-sm font-black text-text-primary">{Math.round(relevance)}/100</span>
             </div>
           )}
@@ -171,7 +177,7 @@ export function AlertCard({ alert, className }: Props) {
         {url && (
           <a href={url} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 text-xs font-bold text-text-muted hover:text-primary transition-colors">
-            Source officielle
+            {t('common.source')}
             <ExternalLink className="w-3 h-3" />
           </a>
         )}
@@ -181,7 +187,7 @@ export function AlertCard({ alert, className }: Props) {
         <div className="mt-6 flex items-start gap-3 rounded-lg border border-border bg-secondary/50 p-4">
           <CheckCircle2 className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
           <div className="flex flex-col">
-            <span className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-success">Recommandation</span>
+            <span className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-success">{t('regulations.recommendation')}</span>
             <p className="text-xs font-bold text-text-secondary leading-normal">{action}</p>
           </div>
         </div>
@@ -189,21 +195,21 @@ export function AlertCard({ alert, className }: Props) {
 
       {analysisInsight && (
         <div className="mt-4 rounded-lg border border-primary/15 bg-primary/5 p-4">
-          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-primary">Analyse IA</span>
+          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-primary">{t('regulations.businessDecision')}</span>
           <p className="text-xs font-medium leading-normal text-text-secondary">{analysisInsight}</p>
         </div>
       )}
 
       {(category || classification || origin || raw_nlp_level || calibration_reason || typeof product_match === 'boolean') && (
         <div className="mt-4 grid gap-2 rounded-lg border border-border bg-background/60 p-4 text-xs text-text-secondary sm:grid-cols-2">
-          {category && <span><strong className="text-text-primary">Catégorie :</strong> {category}</span>}
-          {classification && <span><strong className="text-text-primary">Notification :</strong> {classification}</span>}
-          {origin && <span><strong className="text-text-primary">Origine :</strong> {origin}</span>}
+          {category && <span><strong className="text-text-primary">{t('regulations.category')} :</strong> {category}</span>}
+          {classification && <span><strong className="text-text-primary">{t('regulations.notification')} :</strong> {classification}</span>}
+          {origin && <span><strong className="text-text-primary">{t('regulations.origin')} :</strong> {origin}</span>}
           {typeof product_match === 'boolean' && (
-            <span><strong className="text-text-primary">Produit :</strong> {product_match ? 'correspondant' : 'hors périmètre'}</span>
+            <span><strong className="text-text-primary">{t('regulations.productScope')} :</strong> {product_match ? t('regulations.productMatched') : t('regulations.productOutsideScope')}</span>
           )}
-          {hasAdjustedLevel && (
-            <span><strong className="text-text-primary">NLP brut :</strong> {raw_nlp_level}</span>
+          {classification_basis === 'curated_source_level' && model_nlp_level && (
+            <span><strong className="text-text-primary">{t('regulations.decisionBasis')} :</strong> {t('regulations.curatedSource')}</span>
           )}
         </div>
       )}

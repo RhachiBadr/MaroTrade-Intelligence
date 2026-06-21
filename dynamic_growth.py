@@ -341,7 +341,35 @@ def fetch_growth_data(hs_code: str, known_countries: set, force_refresh: bool = 
 
     if not force_refresh:
         print(f"     Croissance: local-first fallback ({hs_code})")
-        return GROWTH_FALLBACK.get(hs_code, {})
+        static_fallback = GROWTH_FALLBACK.get(hs_code, {})
+        if static_fallback:
+            return static_fallback
+
+        from data_sources import get_local_ag2_history
+
+        history = get_local_ag2_history(hs_code)
+        if history.empty:
+            return {}
+
+        result = {}
+        for country, group in history.groupby("country_code"):
+            if country not in known_countries:
+                continue
+            values = group.sort_values("year")["value_usd"].tail(3).astype(float).tolist()
+            if len(values) < 2 or values[0] <= 0 or values[-1] <= 0:
+                continue
+            cagr = float(np.clip(compute_cagr(values[0], values[-1], len(values) - 1), -100, 100))
+            velocity = float(np.clip(
+                compute_velocity(values) if len(values) >= 3 and all(value > 0 for value in values) else 0.0,
+                -100,
+                100,
+            ))
+            result[country] = {
+                "cagr": cagr,
+                "velocity": velocity,
+                "momentum": float(np.clip(compute_momentum(cagr, velocity), -100, 100)),
+            }
+        return result
 
     # Récupérer les 3 années
     print(f"     Croissance: récupération 2020-2021-2022 via UN Comtrade...")

@@ -15,6 +15,7 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
+from urllib.parse import quote
 
 import feedparser
 import requests
@@ -31,6 +32,8 @@ class RASFFStructuredClient:
     """Fetches recent RASFF alerts and normalizes them for the NLP pipeline."""
 
     BASE_URL = "https://webgate.ec.europa.eu/rasff-window/backend/public"
+    PUBLIC_APP_URL = "https://webgate.ec.europa.eu/rasff-window"
+    PUBLIC_NOTIFICATION_URL = f"{PUBLIC_APP_URL}/screen/notification/{{notification_id}}"
     SEARCH_URL = f"{BASE_URL}/notification/search/consolidated/en/"
     RSS_URL = f"{BASE_URL}/consumer/rss/all/"
     DETAIL_URL = f"{BASE_URL}/notification/view/id/{{notification_id}}/"
@@ -67,7 +70,7 @@ class RASFFStructuredClient:
         if use_cache:
             cached = self._read_cache(cache_path)
             if cached is not None:
-                return cached
+                return self._repair_cached_alert_urls(cached) if isinstance(cached, list) else cached
 
         alerts: List[Dict] = []
         try:
@@ -123,7 +126,8 @@ class RASFFStructuredClient:
         classification = self._first_text(self._path(item, ["notificationClassification", "description"]))
         origin = self._countries_to_text(item.get("originCountries"))
         notifying_country = self._first_text(self._path(item, ["notifyingCountry", "organizationName"]))
-        reference = self._first_text(item.get("reference"), item.get("notifId"), self._stable_hash(title))
+        notification_id = self._extract_notification_id_from_payload(item)
+        reference = self._first_text(item.get("reference"), notification_id, self._stable_hash(title))
         date = self._normalize_date(item.get("ecValidationDate"))
         summary = self._compose_summary(title, category, "", origin)
         text_for_level = f"{title} {summary} {classification}".lower()
@@ -141,7 +145,7 @@ class RASFFStructuredClient:
             "resume": summary,
             "resume_fr": summary,
             "action": "Verifier la conformite documentaire et sanitaire avant expedition.",
-            "url": "https://webgate.ec.europa.eu/rasff-window/",
+            "url": self._build_public_notification_url(notification_id, reference),
             "score_impact": self._estimate_impact_score(text_for_level),
             "impact_score": self._estimate_impact_score(text_for_level),
             "delai_jours": 0,
@@ -207,7 +211,7 @@ class RASFFStructuredClient:
             self._entry_value(entry, "published"),
         )
         reference = self._first_text(self._find_first_value(detail, ["reference"]), notification_id)
-        url = self.DETAIL_URL.format(notification_id=notification_id) if notification_id else self._entry_value(entry, "link")
+        url = self._build_public_notification_url(notification_id, reference)
         summary = self._compose_summary(title, category, hazard, origin)
         text_for_level = f"{title} {summary} {classification} {hazard}".lower()
 
@@ -232,6 +236,7 @@ class RASFFStructuredClient:
             "classification": classification,
             "origin": origin,
             "maroc_relevant": self._is_maroc_relevant(detail, title, summary, origin),
+            "api_url": self.DETAIL_URL.format(notification_id=notification_id) if notification_id else "",
             "structured": True,
             "live": True,
         }
@@ -242,7 +247,8 @@ class RASFFStructuredClient:
         date = self._entry_value(entry, "published") or self._entry_value(entry, "updated")
         link = self._entry_value(entry, "link")
         text_for_level = f"{title} {summary}".lower()
-        entry_id = self._extract_notification_id(entry) or self._stable_hash(title, date)
+        notification_id = self._extract_notification_id(entry)
+        entry_id = notification_id or self._stable_hash(title, date)
 
         return {
             "id": f"RASFF-{entry_id}",
@@ -257,7 +263,7 @@ class RASFFStructuredClient:
             "resume": summary[:500],
             "resume_fr": summary[:500],
             "action": "Verifier les exigences RASFF et les certificats sanitaires applicables.",
-            "url": link,
+            "url": self._build_public_notification_url(notification_id) if notification_id else link,
             "score_impact": self._estimate_impact_score(text_for_level),
             "impact_score": self._estimate_impact_score(text_for_level),
             "delai_jours": 0,
@@ -268,6 +274,65 @@ class RASFFStructuredClient:
             "structured": False,
             "live": True,
         }
+
+    def _build_public_notification_url(
+        self,
+        notification_id: Optional[Any] = None,
+        reference: Optional[Any] = None,
+    ) -> str:
+        """Return a human-facing RASFF detail URL when an exact id is known."""
+        clean_id = self._first_text(notification_id)
+        if clean_id and re.fullmatch(r"\d{3,12}", clean_id):
+            return self.PUBLIC_NOTIFICATION_URL.format(notification_id=clean_id)
+
+        clean_reference = self._first_text(reference)
+        if clean_reference:
+            return self.PUBLIC_NOTIFICATION_URL.format(notification_id=quote(clean_reference, safe=""))
+
+        return self.PUBLIC_APP_URL
+
+    def _extract_notification_id_from_payload(self, payload: Dict) -> str:
+        candidates = [
+            (payload.get("id"), False),
+            (payload.get("notificationId"), False),
+            (payload.get("notification_id"), False),
+            (payload.get("notifId"), False),
+            (payload.get("url"), True),
+            (payload.get("api_url"), True),
+            (self._find_first_value(payload, ["notificationId", "notification_id", "notifId"]), False),
+        ]
+        for candidate, allow_embedded_id in candidates:
+            text = self._first_text(candidate)
+            if not text:
+                continue
+            if re.fullmatch(r"\d{3,12}", text):
+                return text
+            if allow_embedded_id:
+                for pattern in [r"/notification/view/id/(\d+)", r"/screen/notification/(\d+)", r"[?&]id=(\d+)"]:
+                    match = re.search(pattern, text)
+                    if match:
+                        return match.group(1)
+        return ""
+
+    def _repair_cached_alert_urls(self, alerts: List[Dict]) -> List[Dict]:
+        repaired = []
+        for alert in alerts:
+            if not isinstance(alert, dict) or alert.get("source") != "RASFF":
+                repaired.append(alert)
+                continue
+
+            url = self._first_text(alert.get("url"))
+            is_generic = (
+                not url
+                or url.rstrip("/") == self.PUBLIC_APP_URL.rstrip("/")
+                or "/screen/search" in url
+            )
+            if is_generic:
+                notification_id = self._extract_notification_id_from_payload(alert)
+                reference = self._first_text(alert.get("reference"), str(alert.get("id", "")).removeprefix("RASFF-"))
+                alert = {**alert, "url": self._build_public_notification_url(notification_id, reference)}
+            repaired.append(alert)
+        return repaired
 
     def _extract_notification_id(self, entry: Any) -> Optional[str]:
         candidates = [

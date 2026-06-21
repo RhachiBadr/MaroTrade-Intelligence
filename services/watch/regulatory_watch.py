@@ -22,6 +22,12 @@ from typing import Optional
 import re
 
 from services.watch.sources import RASFFStructuredClient
+from services.watch.regulatory_text import (
+    build_french_action,
+    build_business_explanation,
+    build_french_summary,
+    translate_regulatory_title,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -95,6 +101,11 @@ def _matches_product(alert: dict, hs_code: str, product_name: str = "") -> bool:
         elif normalized_keyword in alert_text:
             return True
     return False
+
+
+def _is_product_relevant_alert(alert: dict, hs_code: str, product_name: str = "") -> bool:
+    """Strict product filter used before displaying regulatory alerts."""
+    return _matches_product(alert, hs_code, product_name)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -318,6 +329,7 @@ HS_KEYWORDS = {
     "080410": ["datte", "dattes", "dates", "palm fruit"],
     "070200": ["tomate", "tomato"],
     "520811": ["textile", "coton", "cotton"],
+    "4205": ["cuir", "leather", "articles en cuir", "leather articles"],
 }
 
 
@@ -564,6 +576,25 @@ class RegulatoryWatchEngine:
 
         return normalized
 
+    def _apply_french_presentation(self, alert: dict) -> dict:
+        """Create concise French content after NLP inference and calibration."""
+        title_fr = translate_regulatory_title(
+            alert.get("titre_fr") or alert.get("titre", ""),
+            self._as_text(alert.get("origin", "")),
+        )
+        alert["titre_fr"] = title_fr or alert.get("titre", "")
+        alert["resume_fr"] = build_french_summary(alert, alert["titre_fr"])
+        alert["business_explanation"] = build_business_explanation(
+            final_level=alert.get("niveau", LEVEL_INFO),
+            model_level=alert.get("model_nlp_level") or alert.get("raw_nlp_level") or alert.get("niveau", LEVEL_INFO),
+            relevance=float(alert.get("relevance", 0) or 0),
+            product_match=alert.get("product_match"),
+            calibration_reason=alert.get("calibration_reason", ""),
+            classification_basis=alert.get("classification_basis", ""),
+        )
+        alert["action"] = build_french_action(alert)
+        return alert
+
     def _calibrate_alert_level(
         self,
         alert: dict,
@@ -669,6 +700,7 @@ class RegulatoryWatchEngine:
                         "reasoning": calibration_reason,
                     }
                 )
+                self._apply_french_presentation(normalized)
                 calibrated_alerts.append(normalized)
             return calibrated_alerts
 
@@ -697,7 +729,12 @@ class RegulatoryWatchEngine:
                     target_countries=target_countries,
                 )
 
-                raw_niveau = result.get("niveau", normalized.get("niveau", LEVEL_INFO))
+                model_niveau = result.get("niveau", normalized.get("niveau", LEVEL_INFO))
+                source = self._as_text(normalized.get("source")).upper()
+                model_in_scope = source in {"RASFF", "FDA"} or bool(
+                    normalized.get("live") or normalized.get("structured")
+                )
+                raw_niveau = model_niveau if model_in_scope else normalized.get("niveau", LEVEL_INFO)
                 confidence = result.get("confidence", result.get("confiance", normalized.get("confidence", 0.0)))
                 impact_score = result.get("impact_score", normalized.get("impact_score", 0.0))
                 niveau, calibration_reason = self._calibrate_alert_level(
@@ -715,13 +752,23 @@ class RegulatoryWatchEngine:
                         "niveau": niveau,
                         "level": niveau,
                         "raw_nlp_level": raw_niveau,
+                        "model_nlp_level": model_niveau,
+                        "classification_basis": "nlp_calibrated" if model_in_scope else "curated_source_level",
                         "calibration_reason": calibration_reason,
                         "confidence": confidence,
                         "confiance": result.get("confiance", confidence),
                         "impact_score": impact_score,
                         "score_impact": impact_score,
-                        "resume_fr": result.get("resume_fr") or result.get("summary") or normalized.get("resume_fr", ""),
-                        "summary": result.get("summary") or normalized.get("summary", ""),
+                        "resume_fr": (
+                            result.get("resume_fr") or result.get("summary") or normalized.get("resume_fr", "")
+                            if model_in_scope
+                            else normalized.get("resume_fr", "")
+                        ),
+                        "summary": (
+                            result.get("summary") or normalized.get("summary", "")
+                            if model_in_scope
+                            else normalized.get("summary", "")
+                        ),
                         "entities": result.get("entities") or normalized.get("entities", {}),
                         "keywords": result.get("keywords") or normalized.get("keywords", []),
                         "reasoning": reasoning,
@@ -733,6 +780,7 @@ class RegulatoryWatchEngine:
                         "llm_enhanced": True,
                     }
                 )
+                self._apply_french_presentation(normalized)
                 logger.info("NLP analysis completed for alert %s", alert_id)
 
             except Exception as exc:
@@ -749,6 +797,7 @@ class RegulatoryWatchEngine:
                 )
                 logger.exception("NLP analysis failed for alert %s: %s", alert_id, exc)
 
+            self._apply_french_presentation(normalized)
             enriched_alerts.append(normalized)
 
         return enriched_alerts
@@ -812,6 +861,8 @@ class RegulatoryWatchEngine:
                 pays_list = ["FRA", "DEU", "ESP", "ITA", "NLD", "BEL", "GBR"]
 
             alert_data = {**reg, "pays": pays_list}
+            if not _is_product_relevant_alert(alert_data, hs_code, product_name):
+                continue
             relevance = score_relevance(
                 alert_data,
                 hs_code,
@@ -826,6 +877,8 @@ class RegulatoryWatchEngine:
             print("  Collecte RASFF structuree...")
             structured_rasff = self._fetch_structured_rasff_alerts()
             for alert in structured_rasff:
+                if not _is_product_relevant_alert(alert, hs_code, product_name):
+                    continue
                 relevance = score_relevance(alert, hs_code, target_countries, product_name)
                 if relevance > 20:
                     all_alerts.append({**alert, "relevance": relevance})
@@ -835,6 +888,8 @@ class RegulatoryWatchEngine:
             for src_name, src_cfg in RSS_SOURCES.items():
                 live = fetch_rss_alerts(src_name, src_cfg)
                 for alert in live:
+                    if not _is_product_relevant_alert(alert, hs_code, product_name):
+                        continue
                     relevance = score_relevance(alert, hs_code, target_countries, product_name)
                     if relevance > 25:
                         all_alerts.append({**alert, "relevance": relevance})

@@ -438,6 +438,18 @@ PAYS_NOM: Dict[str, str] = {
 }
 
 # ISO3 → ISO2 (World Bank)
+# UN M49 numeric code -> ISO3 for the markets supported by MaroTrade.
+_UN_NUMERIC_TO_ISO3: Dict[int, str] = {
+    36: "AUS", 40: "AUT", 56: "BEL", 76: "BRA", 100: "BGR", 124: "CAN",
+    156: "CHN", 203: "CZE", 208: "DNK", 231: "ETH", 246: "FIN", 251: "FRA",
+    276: "DEU", 300: "GRC", 348: "HUN", 356: "IND", 372: "IRL", 380: "ITA",
+    384: "CIV", 392: "JPN", 400: "JOR", 404: "KEN", 410: "KOR", 414: "KWT",
+    484: "MEX", 528: "NLD", 554: "NZL", 566: "NGA", 578: "NOR", 616: "POL",
+    620: "PRT", 634: "QAT", 642: "ROU", 643: "RUS", 682: "SAU", 686: "SEN",
+    702: "SGP", 710: "ZAF", 724: "ESP", 752: "SWE", 757: "CHE", 784: "ARE",
+    788: "TUN", 792: "TUR", 818: "EGY", 826: "GBR", 842: "USA",
+}
+
 _ISO3_TO_ISO2: Dict[str, str] = {
     "FRA": "FR", "DEU": "DE", "ESP": "ES", "ITA": "IT", "NLD": "NL",
     "BEL": "BE", "GBR": "GB", "USA": "US", "CAN": "CA", "SAU": "SA",
@@ -806,6 +818,71 @@ def _fetch_comtrade_raw(hs_code: str) -> Optional[list]:
     r.raise_for_status()
     return r.json().get("data", [])
 
+def get_local_ag2_history(hs_code: str) -> pd.DataFrame:
+    """
+    Return the local historical series for the HS2 family of ``hs_code``.
+
+    The v6 ranking model was trained at HS2 level. For a detailed code such as
+    HS 4205, this provides an explicit family-level proxy (HS 42) instead of
+    neutral, identical values for every market.
+    """
+    source_path = Path("data/raw/comtrade_ag2_full.csv")
+    output_columns = ["country_code", "year", "value_usd", "weight_kg", "price_usd_kg"]
+    if not source_path.exists():
+        return pd.DataFrame(columns=output_columns)
+
+    try:
+        history = pd.read_csv(
+            source_path,
+            usecols=["hs_code", "year", "partner_code", "value_usd", "weight_kg", "price_usd_kg"],
+        )
+        hs2 = str(hs_code).strip().zfill(2)[:2]
+        history = history[history["hs_code"].astype(str).str.zfill(2).eq(hs2)].copy()
+        history["country_code"] = pd.to_numeric(history["partner_code"], errors="coerce").map(_UN_NUMERIC_TO_ISO3)
+        history = history[history["country_code"].isin(ACCORDS_MAROC)].copy()
+        if history.empty:
+            return pd.DataFrame(columns=output_columns)
+
+        for column in ("year", "value_usd", "weight_kg", "price_usd_kg"):
+            history[column] = pd.to_numeric(history[column], errors="coerce").fillna(0)
+
+        # Some 2024 rows contain both a total and its components. Keep the
+        # largest row per country/year to avoid counting the same flow twice.
+        history = (
+            history.sort_values("value_usd", ascending=False)
+            .drop_duplicates(["country_code", "year"], keep="first")
+            .sort_values(["country_code", "year"])
+        )
+        return history[output_columns].reset_index(drop=True)
+    except Exception as exc:
+        logger.warning(f"Lecture locale HS2 impossible pour HS {hs_code}: {exc}")
+        return pd.DataFrame(columns=output_columns)
+
+
+def get_local_ag2_trade_data(hs_code: str) -> pd.DataFrame:
+    """Build the latest market snapshot from the local HS2 historical series."""
+    history = get_local_ag2_history(hs_code)
+    if history.empty:
+        return pd.DataFrame()
+
+    latest_year = int(history["year"].max())
+    latest = history[history["year"].eq(latest_year)].copy()
+    latest["country_name"] = latest["country_code"].map(PAYS_NOM).fillna(latest["country_code"])
+
+    growth_by_country: Dict[str, float] = {}
+    for country_code, group in history.groupby("country_code"):
+        values = group.sort_values("year")["value_usd"].tail(2).tolist()
+        if len(values) == 2 and values[0] > 0:
+            growth_by_country[country_code] = float(np.clip(((values[1] / values[0]) - 1) * 100, -100, 200))
+        else:
+            growth_by_country[country_code] = 0.0
+    latest["growth_pct"] = latest["country_code"].map(growth_by_country).fillna(0.0)
+
+    return latest[
+        ["country_code", "country_name", "value_usd", "weight_kg", "growth_pct", "price_usd_kg"]
+    ].sort_values("value_usd", ascending=False).reset_index(drop=True)
+
+
 def get_trade_data(hs_code: str, force_refresh: bool = False) -> pd.DataFrame:
     """
     Récupère les données commerciales pour un code HS.
@@ -822,9 +899,22 @@ def get_trade_data(hs_code: str, force_refresh: bool = False) -> pd.DataFrame:
         logger.info(f"Trade data local-first depuis cache pour HS {hs_code}")
         if isinstance(cached, dict) and "_stale" in cached:
             cached = {k: v for k, v in cached.items() if k != "_stale"}
-        return pd.DataFrame(cached)
+        cached_df = pd.DataFrame(cached)
+        if hs_code not in DEMO_TRADE_DATA and cached_df.get("value_usd", pd.Series(dtype=float)).nunique() <= 1:
+            local_ag2 = get_local_ag2_trade_data(hs_code)
+            if not local_ag2.empty:
+                logger.info(f"Cache generique remplace par la famille HS2 pour HS {hs_code}")
+                cache.set(cache_key, local_ag2.to_dict("records"))
+                return local_ag2
+        return cached_df
 
     if not force_refresh:
+        local_ag2 = get_local_ag2_trade_data(hs_code)
+        if not local_ag2.empty:
+            logger.info(f"Local-first: donnees famille HS2 {str(hs_code).zfill(2)[:2]} utilisees pour HS {hs_code}")
+            cache.set(cache_key, local_ag2.to_dict("records"))
+            return local_ag2
+
         logger.warning(f"Local-first: HS {hs_code} non reconnu, données génériques neutres")
         generic = [
             {

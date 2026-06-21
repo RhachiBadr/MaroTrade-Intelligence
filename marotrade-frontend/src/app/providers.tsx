@@ -2,6 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { AuthProvider } from '@/components/auth/AuthProvider'
+import { I18nProvider } from '@/lib/i18n'
 
 type Theme = 'dark' | 'light'
 
@@ -54,11 +55,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={qc}>
-      <AuthProvider>
-        <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
-          {children}
-        </ThemeContext.Provider>
-      </AuthProvider>
+      <I18nProvider>
+        <AuthProvider>
+          <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+            {children}
+          </ThemeContext.Provider>
+        </AuthProvider>
+      </I18nProvider>
     </QueryClientProvider>
   )
 }

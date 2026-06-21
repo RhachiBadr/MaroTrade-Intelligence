@@ -1,44 +1,74 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AlertCard } from '@/components/molecules/AlertCard'
 import { fetchAlerts, useRegulatoryAlerts } from '@/lib/api'
 import { MOCK_ALERTS } from '@/lib/mock-data'
 import type { AlertLevel } from '@/types'
-import { Download, ShieldCheck, Sparkles, Filter, RefreshCw } from 'lucide-react'
+import { ArrowDownWideNarrow, CalendarDays, Download, ShieldCheck, Sparkles, Filter, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PageContainer, PageHeader } from '@/components/ui/page-shell'
 import { Button } from '@/components/ui/button'
 import { useAnalysisStore } from '@/store/analysis'
 import { useQueryClient } from '@tanstack/react-query'
+import { useI18n } from '@/lib/i18n'
+import { isAlertInPeriod, parseAlertDate, type AlertPeriod } from '@/lib/regulations/alert-date'
+import { useSearchParams } from 'next/navigation'
 
 const LEVELS: AlertLevel[] = ['CRITIQUE', 'ATTENTION', 'INFO']
 
 export default function RegulationsPage() {
+  const { t, locale } = useI18n()
+  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const params = useAnalysisStore((s) => s.params)
   const results = useAnalysisStore((s) => s.results)
   const [levelFilter, setLevelFilter] = useState<AlertLevel[]>(['CRITIQUE', 'ATTENTION', 'INFO'])
   const [isForceRefreshing, setIsForceRefreshing] = useState(false)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+  const [period, setPeriod] = useState<AlertPeriod>('all')
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
 
-  const hsCode = params?.hs_code || '151590'
-  const productName = params?.product_name || 'Huile argan'
-  const targetCountries = results.length > 0
-    ? results.slice(0, 5).map((r) => r.country.code)
-    : ['FRA']
+  const queryProductName = searchParams.get('product_name')?.trim()
+  const queryHsCode = searchParams.get('hs_code')?.trim()
+  const queryCountries = searchParams.get('countries')
+    ?.split(',')
+    .map((country) => country.trim().toUpperCase())
+    .filter(Boolean)
+
+  const hsCode = queryHsCode || params?.hs_code || '151590'
+  const productName = queryProductName || params?.product_name || 'Huile argan'
+  const targetCountries = queryCountries?.length
+    ? queryCountries
+    : results.length > 0
+      ? results.slice(0, 5).map((r) => r.country.code)
+      : ['FRA']
 
   const { data: liveAlerts, isFetching, isError } = useRegulatoryAlerts(hsCode, productName, targetCountries)
-  const alertsQueryKey = ['alerts', hsCode, targetCountries.join(',')]
-  const alerts = liveAlerts?.length ? liveAlerts : MOCK_ALERTS
-  const filtered = alerts.filter(a => levelFilter.includes(a.niveau))
-  const critique = filtered.filter(a => a.niveau === 'CRITIQUE')
-  const attention = filtered.filter(a => a.niveau === 'ATTENTION')
-  const info = filtered.filter(a => a.niveau === 'INFO')
+  const alertsQueryKey = ['alerts', hsCode, productName, targetCountries.join(','), locale]
+  const alerts = Array.isArray(liveAlerts) ? liveAlerts : MOCK_ALERTS
+  const chronologicalAlerts = useMemo(() => [...alerts].sort((a, b) => {
+    const aTime = parseAlertDate(a.date)?.getTime() ?? Number.NEGATIVE_INFINITY
+    const bTime = parseAlertDate(b.date)?.getTime() ?? Number.NEGATIVE_INFINITY
+    return bTime - aTime
+  }), [alerts])
+  const periodAlerts = useMemo(
+    () => chronologicalAlerts.filter(alert => isAlertInPeriod(alert.date, period, customStart, customEnd)),
+    [chronologicalAlerts, period, customStart, customEnd],
+  )
+  const filtered = periodAlerts.filter(alert => levelFilter.includes(alert.niveau))
 
   const toggleLevel = (l: AlertLevel) =>
     setLevelFilter(prev => prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l])
 
-  const llmAlerts = alerts.filter(a => a.llm_enhanced || a.nlp_enhanced)
+  const llmAlerts = filtered.filter(a => a.llm_enhanced || a.nlp_enhanced)
+  const periodOptions: Array<{ id: AlertPeriod; label: string }> = [
+    { id: 'all', label: t('regulations.allPeriods') },
+    { id: 'today', label: t('regulations.today') },
+    { id: 'week', label: t('regulations.thisWeek') },
+    { id: 'month', label: t('regulations.thisMonth') },
+    { id: 'custom', label: t('regulations.customPeriod') },
+  ]
 
   async function forceRefreshAlerts() {
     setIsForceRefreshing(true)
@@ -53,7 +83,7 @@ export default function RegulationsPage() {
 
   function exportCSV() {
     const rows = [['Niveau', 'Titre', 'Source', 'Date', 'Impact', 'Confiance', 'NLP', 'Action']]
-    alerts.forEach(a => rows.push([
+    filtered.forEach(a => rows.push([
       a.niveau,
       a.titre,
       a.source,
@@ -72,26 +102,30 @@ export default function RegulationsPage() {
   return (
     <PageContainer className="max-w-5xl space-y-10 py-2">
       <PageHeader
-        title="Veille réglementaire"
-        description="Sources : EUR-Lex, RASFF, OMC, FDA — filtrez par niveau de criticité."
+        title={t('regulations.title')}
+        description={t('regulations.subtitle')}
         actions={
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="secondary" onClick={forceRefreshAlerts} className="gap-2" disabled={isFetching || isForceRefreshing}>
               <RefreshCw className={cn('h-4 w-4', (isFetching || isForceRefreshing) && 'animate-spin')} />
-              Actualiser
+              {t('common.refresh')}
             </Button>
             <Button type="button" variant="secondary" onClick={exportCSV} className="gap-2">
               <Download className="h-4 w-4" />
-              Exporter CSV
+              {t('common.exportCsv')}
             </Button>
           </div>
         }
       />
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-xs font-medium text-text-muted">
-        <span className="font-semibold text-text-primary">{alerts.length} alertes</span>
+        <span className="font-semibold text-text-primary">{filtered.length} / {alerts.length} {t('regulations.visibleAlerts')}</span>
         <span>Produit : {productName}</span>
         <span>HS {hsCode}</span>
+        <span className="inline-flex items-center gap-1 text-primary-600">
+          <ArrowDownWideNarrow className="h-3.5 w-3.5" />
+          {t('regulations.newestFirst')}
+        </span>
         <span>Marchés : {targetCountries.join(', ')}</span>
         {isFetching && <span className="text-primary">Lecture du cache Redis...</span>}
         {isForceRefreshing && <span className="text-primary">Actualisation temps réel en cours...</span>}
@@ -111,9 +145,9 @@ export default function RegulationsPage() {
             <div className="flex items-center gap-3 mb-4">
               <div className="flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary-700 dark:bg-primary-950/40 dark:text-primary-300">
                 <Sparkles className="w-3 h-3" />
-                Brief Exécutif IA
+                {t('regulations.executiveBrief')}
               </div>
-              <span className="text-xs font-medium text-text-muted">Analyse assistée par le pipeline NLP local</span>
+              <span className="text-xs font-medium text-text-muted">{t('regulations.assistedAnalysis')}</span>
             </div>
 
             <p className="text-base font-normal leading-relaxed text-text-secondary">
@@ -125,25 +159,80 @@ export default function RegulationsPage() {
 
       {/* Filters & Content */}
       <div className="space-y-8">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="mr-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-text-muted">
-            <Filter className="w-3 h-3" />
-            Filtrer par sévérité :
+        <div className="space-y-4 rounded-xl border border-border bg-surface p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="mr-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-text-muted">
+              <CalendarDays className="h-3.5 w-3.5" />
+              {t('regulations.filterByPeriod')}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {periodOptions.map(option => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setPeriod(option.id)}
+                  className={cn(
+                    'rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
+                    period === option.id
+                      ? 'border-primary-600 bg-primary-600 text-white shadow-sm'
+                      : 'border-border bg-background text-text-secondary hover:border-primary-300 hover:text-primary-600',
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-2">
-            {LEVELS.map(l => (
-              <button key={l} onClick={() => toggleLevel(l)}
-                className={cn(
-                  'rounded-full border px-4 py-2 text-[10px] font-semibold uppercase tracking-wide transition-all',
-                  levelFilter.includes(l)
-                    ? l === 'CRITIQUE' ? 'bg-danger-600 text-white border-danger-600 shadow-lg shadow-danger-600/20'
-                      : l === 'ATTENTION' ? 'bg-warning-600 text-white border-warning-600 shadow-lg shadow-warning-600/20'
-                        : 'bg-primary-600 text-white border-primary-600 shadow-lg shadow-primary-600/20'
-                    : 'bg-surface border-border text-text-muted hover:border-text-secondary'
-                )}>
-                {l} ({alerts.filter(a => a.niveau === l).length})
-              </button>
-            ))}
+
+          {period === 'custom' && (
+            <div className="grid gap-3 border-t border-border pt-4 sm:max-w-xl sm:grid-cols-2">
+              <label className="space-y-1.5 text-xs font-medium text-text-secondary">
+                <span>{t('regulations.startDate')}</span>
+                <input
+                  type="date"
+                  value={customStart}
+                  max={customEnd || undefined}
+                  onChange={event => setCustomStart(event.target.value)}
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-text-primary focus:border-primary-500 focus:outline-none"
+                />
+              </label>
+              <label className="space-y-1.5 text-xs font-medium text-text-secondary">
+                <span>{t('regulations.endDate')}</span>
+                <input
+                  type="date"
+                  value={customEnd}
+                  min={customStart || undefined}
+                  onChange={event => setCustomEnd(event.target.value)}
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-text-primary focus:border-primary-500 focus:outline-none"
+                />
+              </label>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
+            <div className="mr-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-text-muted">
+              <Filter className="h-3.5 w-3.5" />
+              {t('regulations.filterBySeverity')}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {LEVELS.map(level => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => toggleLevel(level)}
+                  className={cn(
+                    'rounded-full border px-4 py-2 text-[10px] font-semibold uppercase tracking-wide transition-all',
+                    levelFilter.includes(level)
+                      ? level === 'CRITIQUE' ? 'border-danger-600 bg-danger-600 text-white shadow-lg shadow-danger-600/20'
+                        : level === 'ATTENTION' ? 'border-warning-600 bg-warning-600 text-white shadow-lg shadow-warning-600/20'
+                          : 'border-primary-600 bg-primary-600 text-white shadow-lg shadow-primary-600/20'
+                      : 'border-border bg-surface text-text-muted hover:border-text-secondary',
+                  )}
+                >
+                  {level} ({periodAlerts.filter(alert => alert.niveau === level).length})
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -152,55 +241,12 @@ export default function RegulationsPage() {
             <div className="w-16 h-16 bg-accent-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <ShieldCheck className="w-8 h-8 text-accent-600" />
             </div>
-            <p className="text-lg font-semibold text-text-primary">Aucune alerte</p>
-            <p className="text-sm text-text-muted font-medium">Aucune alerte détectée pour vos critères actuels.</p>
+            <p className="text-lg font-semibold text-text-primary">{t('common.noData')}</p>
+            <p className="text-sm text-text-muted font-medium">{t('regulations.noAlertsForPeriod')}</p>
           </div>
         ) : (
-          <div className="space-y-12">
-            {critique.length > 0 && (
-              <section className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <div className="flex items-center gap-3 mb-6">
-                  <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-danger-600">
-                    <span className="w-2 h-2 rounded-full bg-danger animate-pulse" />
-                    Critiques — action immédiate
-                  </h2>
-                  <div className="h-px flex-1 bg-danger/10" />
-                </div>
-                <div className="grid gap-4">
-                  {critique.map(a => <AlertCard key={a.id} alert={a} />)}
-                </div>
-              </section>
-            )}
-
-            {attention.length > 0 && (
-              <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="flex items-center gap-3 mb-6">
-                  <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-warning-600">
-                    <span className="w-2 h-2 rounded-full bg-warning" />
-                    Attention — risques à suivre
-                  </h2>
-                  <div className="h-px flex-1 bg-warning/10" />
-                </div>
-                <div className="grid gap-4">
-                  {attention.map(a => <AlertCard key={a.id} alert={a} />)}
-                </div>
-              </section>
-            )}
-
-            {info.length > 0 && (
-              <section className="animate-in fade-in slide-in-from-bottom-6 duration-1000">
-                <div className="flex items-center gap-3 mb-6">
-                  <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary-600">
-                    <span className="w-2 h-2 rounded-full bg-primary-600" />
-                    Informations
-                  </h2>
-                  <div className="h-px flex-1 bg-primary-600/10" />
-                </div>
-                <div className="grid gap-4">
-                  {info.map(a => <AlertCard key={a.id} alert={a} />)}
-                </div>
-              </section>
-            )}
+          <div className="grid gap-4">
+            {filtered.map(alert => <AlertCard key={alert.id} alert={alert} />)}
           </div>
         )}
       </div>

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAnalysisStore } from '@/store/analysis'
-import { HS_CATALOGUE, searchHS } from '@/lib/hs-catalogue'
+import { HS_CATALOGUE, HS_NAME_MAP, searchHS } from '@/lib/hs-catalogue'
 import { fetchScore } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import {
@@ -22,6 +22,7 @@ import {
 import { PageContainer, PageHeader } from '@/components/ui/page-shell'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/lib/i18n'
 
 const PERIMETERS = [
   { id: 3, label: 'Top 3 marchés', desc: 'Précision maximale' },
@@ -31,6 +32,7 @@ const PERIMETERS = [
 ]
 
 export default function AnalyzePage() {
+  const { t } = useI18n()
   const router = useRouter()
   const { setResults, setParams, addToHistory } = useAnalysisStore()
 
@@ -53,6 +55,9 @@ export default function AnalyzePage() {
   function handleProduct(val: string) {
     setProduct(val)
     setSugg(val.length >= 2 ? searchHS(val) : [])
+    const normalized = val.toLowerCase()
+    const detectedHs = Object.entries(HS_NAME_MAP).find(([name]) => normalized.includes(name))?.[1]
+    if (detectedHs) setHsCode(detectedHs)
   }
 
   function pickSugg(label: string, hs: string) {
@@ -74,15 +79,15 @@ export default function AnalyzePage() {
       router.push('/results')
     } catch {
       setLoading(false)
-      setSubmitError("Impossible de finaliser l'analyse. Vérifiez la connexion ou réessayez.")
+      setSubmitError(t('common.apiError'))
     }
   }
 
   return (
     <PageContainer className="max-w-3xl space-y-6">
       <PageHeader
-        title="Nouvelle analyse de marché"
-        description="Définissez le produit et le périmètre pour classer les marchés les plus pertinents."
+        title={t('analysis.title')}
+        description={t('analysis.subtitle')}
       />
 
       {submitError && (
@@ -103,7 +108,7 @@ export default function AnalyzePage() {
               style={{ width: step === 1 ? '0%' : step === 2 ? '50%' : '100%' }}
             />
             {[
-              { num: 1, title: 'Produit' },
+              { num: 1, title: t('analysis.product') },
               { num: 2, title: 'Périmètre' },
               { num: 3, title: 'Validation' },
             ].map((s) => {
@@ -145,7 +150,7 @@ export default function AnalyzePage() {
                 <RefreshCw className="h-8 w-8 animate-spin text-primary-600" />
               </div>
               <div className="space-y-2 text-center">
-                <h3 className="text-lg font-semibold text-text-primary">Analyse en cours</h3>
+                <h3 className="text-lg font-semibold text-text-primary">{t('analysis.running')}</h3>
                 <p className="text-sm text-text-muted">
                   Agrégation des données commerciales et calcul des scores.
                 </p>

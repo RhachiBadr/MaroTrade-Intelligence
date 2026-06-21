@@ -157,6 +157,8 @@ class AuthRepository:
         results: list[dict],
     ):
         db = await self.require_db()
+        from prisma import Json
+
         return await db.workspaceanalysis.create(
             data={
                 "userId": user_id,
@@ -164,7 +166,7 @@ class AuthRepository:
                 "productName": product_name,
                 "hsCode": hs_code,
                 "topN": top_n,
-                "results": results,
+                "results": Json(results),
             }
         )
 

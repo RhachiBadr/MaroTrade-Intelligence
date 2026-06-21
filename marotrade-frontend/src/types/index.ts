@@ -78,7 +78,10 @@ export interface RegulatoryAlert {
   brief_executif?: string
   nlp_enhanced?: boolean
   raw_nlp_level?: AlertLevel | string
+  model_nlp_level?: AlertLevel | string
+  classification_basis?: string
   calibration_reason?: string
+  business_explanation?: string
   category?: string
   classification?: string
   origin?: string

@@ -2,6 +2,7 @@
 
 import { PageTransition } from '@/components/motion/PageTransition'
 import { PageContainer, PageHeader } from '@/components/ui/page-shell'
+import { useI18n } from '@/lib/i18n'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { ChartCard } from '@/components/dashboard/ChartCard'
 import { GlassCard, GlassCardContent } from '@/components/ui/glass-card'
@@ -36,12 +37,13 @@ const TOP_PRODUCTS = [
 ]
 
 export default function AnalyticsPage() {
+  const { t } = useI18n()
   return (
     <PageTransition>
       <PageContainer className="space-y-8 pb-8">
         <PageHeader
-          title="Analytics"
-          description="Métriques d'utilisation, tendances de scoring et performance de la plateforme."
+          title={t('pages.analyticsTitle')}
+          description={t('pages.analyticsSubtitle')}
           actions={
             <Button variant="secondary">
               <Download className="h-4 w-4" />

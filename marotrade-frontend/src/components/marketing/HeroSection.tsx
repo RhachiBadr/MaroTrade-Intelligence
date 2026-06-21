@@ -12,20 +12,19 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { HeroBackground } from '@/components/marketing/HeroBackground'
+import { useI18n } from '@/lib/i18n'
+import { marketingContent } from '@/lib/i18n/marketing-content'
 import { AnimatedButton } from '@/components/ui/animated-button'
 import { FloatingCard } from '@/components/ui/floating-card'
 import { Badge } from '@/components/ui/badge'
 import { easeOut } from '@/lib/motion'
 
 const BARS = [58, 86, 72, 93, 64, 78, 88, 69]
-const DECISION_FEED = [
-  { title: 'EU traceability', text: 'Critical regulation mapped', icon: ShieldCheck },
-  { title: 'Price premium', text: 'France supports 1.4x margin', icon: BarChart3 },
-  { title: 'Route quality', text: 'Casablanca to Marseille optimized', icon: Globe2 },
-  { title: 'Confidence', text: '94% data coverage', icon: CheckCircle2 },
-]
-
 function DashboardPreview() {
+  const { locale } = useI18n()
+  const preview = marketingContent[locale].heroPreview
+  const icons = [ShieldCheck, BarChart3, Globe2, CheckCircle2]
+  const decisionFeed = preview.feed.map(([title, text], index) => ({ title, text, icon: icons[index] }))
   return (
     <motion.div
       initial={{ opacity: 0, y: 40, rotateX: 8 }}
@@ -44,7 +43,7 @@ function DashboardPreview() {
             </div>
             <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-text-muted sm:flex">
               <RadioTower className="h-3 w-3 text-accent-500" />
-              Live intelligence layer
+              {preview.live}
             </div>
           </div>
 
@@ -55,8 +54,8 @@ function DashboardPreview() {
               <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Market score</p>
-                    <h3 className="mt-1 text-xl font-semibold text-white">Argan oil export cockpit</h3>
+                    <p className="text-xs font-medium uppercase tracking-wide text-text-muted">{preview.score}</p>
+                    <h3 className="mt-1 text-xl font-semibold text-white">{preview.cockpit}</h3>
                   </div>
                   <Badge variant="success">XGBoost + SHAP</Badge>
                 </div>
@@ -72,7 +71,7 @@ function DashboardPreview() {
                         <TrendingUp className="h-3.5 w-3.5 text-accent-500" />
                       </div>
                       <p className="mt-2 text-2xl font-semibold text-white">{score}</p>
-                      <p className="text-xs font-medium text-accent-500">{trend} demand signal</p>
+                      <p className="text-xs font-medium text-accent-500">{trend} {preview.demandSignal}</p>
                     </div>
                   ))}
                 </div>
@@ -80,7 +79,7 @@ function DashboardPreview() {
 
               <div className="grid gap-4 sm:grid-cols-[0.72fr_1fr]">
                 <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Risk radar</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-text-muted">{preview.riskRadar}</p>
                   <div className="relative mx-auto mt-4 h-44 w-44 rounded-full border border-primary-400/20 bg-primary-500/5">
                     <div className="absolute inset-5 rounded-full border border-accent-400/15" />
                     <div className="absolute inset-12 rounded-full border border-white/10" />
@@ -93,7 +92,7 @@ function DashboardPreview() {
 
                 <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
                   <div className="mb-4 flex items-center justify-between">
-                    <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Forecast curve</p>
+                    <p className="text-xs font-medium uppercase tracking-wide text-text-muted">{preview.forecast}</p>
                     <LineChart className="h-4 w-4 text-primary-300" />
                   </div>
                   <div className="flex h-44 items-end gap-2">
@@ -113,9 +112,9 @@ function DashboardPreview() {
 
             <div className="space-y-4">
               <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Decision feed</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-text-muted">{preview.decisionFeed}</p>
                 <div className="mt-4 space-y-3">
-                  {DECISION_FEED.map(({ title, text, icon: Icon }) => (
+                  {decisionFeed.map(({ title, text, icon: Icon }) => (
                     <div key={title} className="flex items-start gap-3 rounded-lg border border-white/10 bg-black/20 p-3">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-500/15">
                         <Icon className="h-4 w-4 text-primary-300" />
@@ -130,9 +129,9 @@ function DashboardPreview() {
               </div>
 
               <div className="rounded-xl border border-accent-400/20 bg-accent-500/10 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-accent-500">Recommended action</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-accent-500">{preview.action}</p>
                 <p className="mt-2 text-sm leading-relaxed text-text-secondary">
-                  Prioritize France and USA, prepare EUDR traceability documents, and monitor FDA registration before shipment.
+                  {preview.actionText}
                 </p>
               </div>
             </div>
@@ -144,6 +143,8 @@ function DashboardPreview() {
 }
 
 export function HeroSection() {
+  const { locale } = useI18n()
+  const content = marketingContent[locale]
   return (
     <section id="hero-section" className="relative min-h-[100vh] overflow-hidden">
       <HeroBackground />
@@ -163,13 +164,12 @@ export function HeroSection() {
           >
             <Badge variant="primary" className="mb-7 max-w-full gap-1.5 px-4 py-1.5 text-[11px] backdrop-blur-md sm:text-xs">
               <Sparkles className="h-3.5 w-3.5" />
-              <span className="truncate">AI export command center for Moroccan SMEs</span>
+              <span className="truncate">{content.heroBadge}</span>
             </Badge>
           </motion.div>
 
           <h1 className="mx-auto max-w-[18.5rem] text-balance text-4xl font-semibold leading-[1.04] tracking-tight text-text-primary sm:max-w-5xl sm:text-7xl lg:text-8xl lg:leading-[0.95]">
-            Turn export uncertainty into{' '}
-            <span className="gradient-text">market conviction.</span>
+            {content.heroTitle}
           </h1>
 
           <motion.p
@@ -178,7 +178,7 @@ export function HeroSection() {
             transition={{ duration: 0.6, delay: 0.25 }}
             className="mx-auto mt-7 max-w-[18.5rem] text-pretty text-base leading-7 text-text-secondary sm:max-w-3xl sm:text-xl sm:leading-8"
           >
-            MaroTrade fuses trade data, regulatory intelligence, ML scoring, and forecasting into one immersive cockpit for choosing where to export next.
+            {content.heroText}
           </motion.p>
 
           <motion.div
@@ -188,10 +188,10 @@ export function HeroSection() {
             className="mt-10 flex w-full flex-col items-center justify-center gap-4 sm:flex-row"
           >
             <AnimatedButton href="/analyze" size="lg" className="h-14 w-full max-w-xs px-8 sm:w-auto">
-              Launch market analysis
+              {content.heroPrimary}
             </AnimatedButton>
             <AnimatedButton href="/dashboard" variant="secondary" size="lg" className="h-14 w-full max-w-xs px-8 sm:w-auto">
-              View intelligence cockpit
+              {content.heroSecondary}
             </AnimatedButton>
           </motion.div>
 
@@ -201,11 +201,11 @@ export function HeroSection() {
             transition={{ delay: 0.55 }}
             className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-text-muted"
           >
-            <span>Official data sources</span>
+            <span>{content.heroProofs[0]}</span>
             <span className="h-1 w-1 rounded-full bg-text-muted/40" />
-            <span>Explainable AI</span>
+            <span>{content.heroProofs[1]}</span>
             <span className="h-1 w-1 rounded-full bg-text-muted/40" />
-            <span>No credit card required</span>
+            <span>{content.heroProofs[2]}</span>
           </motion.div>
         </motion.div>
 

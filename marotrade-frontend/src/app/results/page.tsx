@@ -13,6 +13,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ResponsiveContainer } from 
 import { PageContainer } from '@/components/ui/page-shell'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/lib/i18n'
 
 const LEVEL_COLORS = ['#0d9488', '#14b8a6', '#d97706', '#ea580c', '#dc2626']
 const formatInteger = (value: number) =>
@@ -21,11 +22,14 @@ const formatInteger = (value: number) =>
     .replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
 
 export default function ResultsPage() {
+  const { t } = useI18n()
   const { results: storeResults, params, expertMode, toggleExpertMode } = useAnalysisStore()
   const results = storeResults.length ? storeResults : MOCK_RESULTS
   const productName = params?.product_name ?? "Huile d'argan bio"
   const hsCode = params?.hs_code ?? '151590'
   const topMarket = results[0]
+  const regulationsHref =
+    `/regulations?product_name=${encodeURIComponent(productName)}&hs_code=${encodeURIComponent(hsCode)}&countries=${encodeURIComponent(results.slice(0, 5).map((r) => r.country.code).join(','))}`
   const usesV6 = topMarket?.scoring_method === 'v6_market_attractiveness'
   const topImports =
     typeof topMarket?.v6_feature_snapshot?.import_value_usd === 'number'
@@ -40,9 +44,9 @@ export default function ResultsPage() {
   }))
 
   const tabs = [
-    { id: 'cards' as const, label: 'Fiches' },
-    { id: 'radar' as const, label: 'Radar' },
-    { id: 'table' as const, label: 'Tableau' },
+    { id: 'cards' as const, label: t('analysis.cards') },
+    { id: 'radar' as const, label: t('analysis.radar') },
+    { id: 'table' as const, label: t('analysis.table') },
   ]
 
   return (
@@ -51,30 +55,30 @@ export default function ResultsPage() {
         <div className="min-w-0">
           <nav className="mb-2 flex flex-wrap items-center gap-1.5 text-xs font-medium text-text-muted">
             <Link href="/dashboard" className="hover:text-primary-600">
-              Tableau de bord
+              {t('nav.dashboard')}
             </Link>
             <span className="text-text-muted/50">/</span>
             <Link href="/analyze" className="hover:text-primary-600">
-              Analyse
+              {t('common.analyze')}
             </Link>
             <span className="text-text-muted/50">/</span>
-            <span className="text-text-secondary">Résultats</span>
+            <span className="text-text-secondary">{t('analysis.results')}</span>
           </nav>
           <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
-            {results.length} marchés — <span className="text-primary-600">{productName}</span>
+            {results.length} {t(results.length === 1 ? 'analysis.market' : 'analysis.markets')} — <span className="text-primary-600">{productName}</span>
           </h1>
           <p className="mt-1 font-mono text-xs text-text-muted">HS {hsCode}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant={expertMode ? 'default' : 'secondary'} size="sm" onClick={toggleExpertMode}>
-            {expertMode ? 'Mode expert' : 'Mode simple'}
+            {expertMode ? t('analysis.expertMode') : t('analysis.simpleMode')}
           </Button>
           <Link
-            href="/regulations"
+            href={regulationsHref}
             className="inline-flex h-8 items-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text-secondary transition-colors hover:bg-secondary"
           >
             <ShieldCheck className="h-4 w-4" />
-            Réglementation
+            {t('nav.regulations')}
           </Link>
         </div>
       </div>
@@ -83,10 +87,10 @@ export default function ResultsPage() {
         <div className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-primary-500/10 blur-3xl" />
         <div className="grid gap-4 md:grid-cols-4">
           {[
-            { label: 'Meilleur marché', value: topMarket?.country.name ?? 'N/A', icon: Sparkles },
-            { label: 'Score recommandé', value: topMarket ? `${Math.round(topMarket.score_final)}/100` : 'N/A', icon: TrendingUp },
-            { label: 'Modèle', value: usesV6 ? 'V6 + PME' : 'Multi-critères', icon: ShieldCheck },
-            { label: 'Demande import', value: topImports, icon: Database },
+            { label: t('dashboard.bestMarket'), value: topMarket?.country.name ?? 'N/A', icon: Sparkles },
+            { label: t('dashboard.recommendedScore'), value: topMarket ? `${Math.round(topMarket.score_final)}/100` : 'N/A', icon: TrendingUp },
+            { label: t('analysis.model'), value: usesV6 ? 'V6 + PME' : t('analysis.model'), icon: ShieldCheck },
+            { label: t('dashboard.importDemand'), value: topImports, icon: Database },
           ].map(({ label, value, icon: Icon }) => (
             <div key={label} className="relative rounded-xl border border-white/70 bg-white/60 px-4 py-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
               <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
@@ -105,7 +109,7 @@ export default function ResultsPage() {
             <CardContent className="p-4 text-center">
               <div className="mb-2 text-2xl">{r.country.flag}</div>
               <p className="truncate text-xs font-semibold text-text-primary">{r.country.name}</p>
-              <p className="mb-3 text-[10px] font-medium uppercase tracking-wide text-text-muted">Rang {r.rank}</p>
+              <p className="mb-3 text-[10px] font-medium uppercase tracking-wide text-text-muted">{t('analysis.rank')} {r.rank}</p>
               <div className="flex justify-center">
                 <ScoreBadge score={r.score_final} size="sm" />
               </div>

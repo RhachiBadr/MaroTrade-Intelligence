@@ -51,7 +51,12 @@ export const useAnalysisStore = create<AnalysisStore>()(
     }),
     {
       name: 'marotrade-storage',
-      partialize: (state) => ({ history: state.history }),
+      partialize: (state) => ({
+        params: state.params,
+        results: state.results,
+        history: state.history,
+        expertMode: state.expertMode,
+      }),
     }
   )
 )

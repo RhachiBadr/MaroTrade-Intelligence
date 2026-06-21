@@ -93,6 +93,37 @@ class TestPmeCalibration(unittest.TestCase):
         calibrated = self.engine.calibrate_v6_scores_for_pme(scores, pd.DataFrame())
         np.testing.assert_array_equal(calibrated, scores)
 
+    def test_tiny_fast_growing_market_is_penalized_for_sme_actionability(self):
+        scores = np.array([100.0, 75.0])
+        features = pd.DataFrame(
+            [
+                {
+                    "log_value_usd": np.log1p(20_000),
+                    "distance_km": 1_000,
+                    "droits": 0,
+                    "ocde_risk_score": 1,
+                    "trend_score": 70,
+                    "wb_available": 1,
+                    "accord_score": 100,
+                    "growth_lag1": 100,
+                },
+                {
+                    "log_value_usd": np.log1p(20_000_000),
+                    "distance_km": 2_000,
+                    "droits": 0,
+                    "ocde_risk_score": 1,
+                    "trend_score": 60,
+                    "wb_available": 1,
+                    "accord_score": 100,
+                    "growth_lag1": 8,
+                },
+            ]
+        )
+
+        calibrated = self.engine.calibrate_v6_scores_for_pme(scores, features)
+
+        self.assertGreater(calibrated[1], calibrated[0])
+
 
 class TestLocalFirstData(unittest.TestCase):
     def test_trade_and_growth_local_first_do_not_call_comtrade(self):
@@ -106,6 +137,19 @@ class TestLocalFirstData(unittest.TestCase):
         self.assertFalse(trade.empty)
         self.assertIn("ESP", set(trade["country_code"]))
         self.assertIn("ESP", growth)
+
+    def test_detailed_leather_code_uses_local_hs2_family_data(self):
+        with (
+            patch.object(data_sources, "_fetch_comtrade_raw", side_effect=AssertionError("Comtrade must not be called")),
+            patch.object(dynamic_growth, "fetch_yearly_data", side_effect=AssertionError("Comtrade growth must not be called")),
+        ):
+            trade = data_sources.get_trade_data("4205", force_refresh=False)
+            growth = dynamic_growth.fetch_growth_data("4205", set(trade["country_code"]), force_refresh=False)
+
+        self.assertFalse(trade.empty)
+        self.assertGreater(trade["value_usd"].nunique(), 1)
+        self.assertIn("FRA", set(trade["country_code"]))
+        self.assertIn("FRA", growth)
 
 
 class TestTopFiveRanking(unittest.TestCase):

@@ -12,14 +12,16 @@ import { GlassCard, GlassCardContent } from '@/components/ui/glass-card'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { Button } from '@/components/ui/button'
 import { AnimatedButton } from '@/components/ui/animated-button'
+import { useI18n } from '@/lib/i18n'
 
 export default function DashboardPage() {
+  const { t } = useI18n()
   return (
     <PageTransition>
       <PageContainer className="space-y-8 pb-8">
         <PageHeader
-          title="Tableau de bord"
-          description="Vue synthétique de l'activité d'analyse et des signaux réglementaires."
+          title={t('dashboard.title')}
+          description={t('dashboard.subtitle')}
           actions={
             <>
               <Button variant="secondary" type="button" className="hidden sm:inline-flex">
@@ -43,7 +45,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-text-primary">Analyses récentes</h2>
+              <h2 className="text-base font-semibold text-text-primary">{t('dashboard.recentAnalyses')}</h2>
               <Link href="/history" className="text-sm font-medium text-primary-400 hover:text-primary-300">
                 Historique
               </Link>
@@ -53,10 +55,10 @@ export default function DashboardPage() {
                 <table className="w-full min-w-[640px] text-left text-sm">
                   <thead className="border-b border-border text-xs font-medium uppercase tracking-wider text-text-muted">
                     <tr>
-                      <th className="px-5 py-3">Produit</th>
-                      <th className="px-5 py-3">Marché</th>
-                      <th className="px-5 py-3">Score</th>
-                      <th className="px-5 py-3">Tendance</th>
+                      <th className="px-5 py-3">{t('analysis.product')}</th>
+                      <th className="px-5 py-3">{t('analysis.market')}</th>
+                      <th className="px-5 py-3">{t('analysis.score')}</th>
+                      <th className="px-5 py-3">{t('analysis.growth')}</th>
                       <th className="px-5 py-3">Date</th>
                       <th className="px-5 py-3" />
                     </tr>
@@ -104,7 +106,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-4">
-            <h2 className="text-base font-semibold text-text-primary">Alertes</h2>
+            <h2 className="text-base font-semibold text-text-primary">{t('dashboard.regulatoryAlerts')}</h2>
             <GlassCard className="divide-y divide-border">
               {[
                 { severity: 'critical' as const, title: 'Mesure douanière (USA)', time: 'il y a 4h', desc: '+5 % sur certaines huiles cosmétiques.' },
@@ -128,7 +130,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-base font-semibold text-text-primary">Marchés à suivre</h2>
+          <h2 className="text-base font-semibold text-text-primary">{t('dashboard.recommendedMarkets')}</h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {[
               { market: 'États-Unis', code: 'US', score: 88, desc: ['Demande en hausse', 'Cadre douanier stable'] },

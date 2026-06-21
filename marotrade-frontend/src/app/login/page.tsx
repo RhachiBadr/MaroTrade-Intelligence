@@ -29,6 +29,8 @@ import { cn } from '@/lib/utils'
 import { easeOut } from '@/lib/motion'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { requestPasswordReset, resetPassword, verifyEmail } from '@/lib/auth-api'
+import { useI18n } from '@/lib/i18n'
+import { BrandLogo } from '@/components/brand/BrandLogo'
 
 type AuthMode = 'login' | 'signup' | 'forgot' | 'reset' | 'verify'
 type FormErrors = Record<string, string>
@@ -257,6 +259,7 @@ function PasswordStrength({ password }: { password: string }) {
 }
 
 export default function LoginPage() {
+  const { t } = useI18n()
   const router = useRouter()
   const { login: authenticate, register } = useAuth()
   const [mode, setMode] = useState<AuthMode>('login')
@@ -500,20 +503,18 @@ export default function LoginPage() {
             <div className="border-b border-white/10 p-5 sm:p-6">
               <div className="mb-5 flex items-center justify-between gap-4">
                 <Link href="/" className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 via-sky-500 to-accent-500 text-white shadow-lg shadow-primary-600/30">
-                    <Globe2 className="h-5 w-5" />
-                  </span>
+                  <BrandLogo size="md" priority />
                   <span className="font-semibold text-text-primary">MaroTrade</span>
                 </Link>
                 <Badge variant="success" className="hidden sm:inline-flex">
-                  Secure workspace
+                  {t('auth.secureWorkspace')}
                 </Badge>
               </div>
 
               <div className="grid min-w-0 grid-cols-2 rounded-xl border border-white/10 bg-white/[0.035] p-1">
                 {[
-                  ['login', 'Connexion'],
-                  ['signup', 'Creer un compte'],
+                  ['login', t('auth.login')],
+                  ['signup', t('auth.createAccount')],
                 ].map(([value, label]) => (
                   <button
                     key={value}
@@ -563,7 +564,7 @@ export default function LoginPage() {
                     </div>
 
                     <Field
-                      label="Email professionnel"
+                      label={t('auth.email')}
                       name="email"
                       type="email"
                       value={login.email}
@@ -574,7 +575,7 @@ export default function LoginPage() {
                       onChange={(value) => setLoginField('email', value)}
                     />
                     <Field
-                      label="Mot de passe"
+                      label={t('auth.password')}
                       name="password"
                       type={showPassword ? 'text' : 'password'}
                       value={login.password}
@@ -602,19 +603,19 @@ export default function LoginPage() {
                           onChange={(event) => setRemember(event.target.checked)}
                           className="h-4 w-4 rounded border-white/20 bg-white/5 text-primary-600 focus:ring-primary-500"
                         />
-                        Se souvenir de moi
+                        {t('auth.rememberMe')}
                       </label>
                       <button
                         type="button"
                         onClick={() => switchMode('forgot')}
                         className="text-sm font-medium text-primary-300 transition-colors hover:text-accent-500"
                       >
-                        Mot de passe oublie ?
+                        {t('auth.forgotPassword')}
                       </button>
                     </div>
 
                     <AnimatedButton type="submit" className="w-full">
-                      {submitting ? 'Connexion...' : 'Se connecter'}
+                      {submitting ? t('common.loading') : t('auth.loginAction')}
                     </AnimatedButton>
 
                     <div className="grid gap-2 sm:grid-cols-2">

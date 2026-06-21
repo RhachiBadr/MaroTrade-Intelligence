@@ -22,6 +22,8 @@ import { GlassCard } from '@/components/ui/glass-card'
 import { FadeIn, FadeInItem, FadeInStagger } from '@/components/motion/FadeIn'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
+import { marketingContent } from '@/lib/i18n/marketing-content'
 
 const FEATURES = [
   { title: 'Market scoring engine', desc: 'Rank countries across 7 weighted dimensions with XGBoost and SHAP explainability.', icon: BarChart3, metric: '7D' },
@@ -92,6 +94,9 @@ function MiniLineChart() {
 }
 
 export function LandingPage() {
+  const { locale, t } = useI18n()
+  const content = marketingContent[locale]
+  const features = FEATURES.map((feature, index) => ({ ...feature, title: content.features[index][0], desc: content.features[index][1], metric: content.features[index][2] }))
   return (
     <div className="overflow-hidden">
       <HeroSection />
@@ -112,17 +117,17 @@ export function LandingPage() {
         <SectionGlow />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <FadeIn className="mx-auto max-w-3xl text-center">
-            <Badge variant="primary" className="mb-5">Intelligence layers</Badge>
+            <Badge variant="primary" className="mb-5">{content.layersBadge}</Badge>
             <h2 className="text-4xl font-semibold tracking-tight text-text-primary sm:text-5xl">
-              A decision system, not another dashboard.
+              {content.layersTitle}
             </h2>
             <p className="mt-5 text-lg leading-8 text-text-secondary">
-              Each module adds a layer of context, from raw trade flows to regulatory risk, route economics, and explainable AI recommendations.
+              {content.layersText}
             </p>
           </FadeIn>
 
           <FadeInStagger className="mt-16 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ title, desc, icon: Icon, metric }) => (
+            {features.map(({ title, desc, icon: Icon, metric }) => (
               <FadeInItem key={title}>
                 <GlassCard tilt className="animated-border group h-full p-[1px]">
                   <div className="h-full rounded-xl bg-background/70 p-6 backdrop-blur-xl">
@@ -149,12 +154,12 @@ export function LandingPage() {
         <SectionGlow />
         <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
           <FadeIn direction="right">
-            <Badge variant="success" className="mb-5">AI workflow</Badge>
+            <Badge variant="success" className="mb-5">{content.workflowBadge}</Badge>
             <h2 className="text-4xl font-semibold tracking-tight text-text-primary sm:text-5xl">
-              From HS code to board-ready export strategy.
+              {content.workflowTitle}
             </h2>
             <p className="mt-5 text-lg leading-8 text-text-secondary">
-              MaroTrade turns fragmented data into a narrative your team can act on: why a market wins, what could block entry, and which route deserves investment.
+              {content.workflowText}
             </p>
             <div className="mt-8 space-y-4">
               {[
@@ -174,7 +179,7 @@ export function LandingPage() {
               ))}
             </div>
             <AnimatedButton href="/analyze" className="mt-8">
-              Run an analysis
+              {content.runAnalysis}
               <ArrowRight className="h-4 w-4" />
             </AnimatedButton>
           </FadeIn>
@@ -231,18 +236,18 @@ export function LandingPage() {
         <div className="aurora-field pointer-events-none absolute inset-x-0 bottom-0 h-[520px] opacity-40" aria-hidden />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <FadeIn className="mx-auto max-w-3xl text-center">
-            <Badge variant="primary" className="mb-5">Performance layer</Badge>
+            <Badge variant="primary" className="mb-5">{content.performanceBadge}</Badge>
             <h2 className="text-4xl font-semibold tracking-tight text-text-primary sm:text-5xl">
-              Built for fast, confident decisions.
+              {content.performanceTitle}
             </h2>
           </FadeIn>
 
           <div className="mt-14 grid grid-cols-2 gap-5 lg:grid-cols-4">
             {[
-              { n: '38+', l: 'markets covered', icon: Globe2 },
-              { n: '7', l: 'scoring dimensions', icon: Layers3 },
-              { n: '<3s', l: 'scoring latency', icon: Gauge },
-              { n: '95%', l: 'critical alert coverage', icon: ShieldCheck },
+              { n: '38+', l: content.stats[0], icon: Globe2 },
+              { n: '7', l: content.stats[1], icon: Layers3 },
+              { n: '<3s', l: content.stats[2], icon: Gauge },
+              { n: '95%', l: content.stats[3], icon: ShieldCheck },
             ].map((s, idx) => (
               <FadeIn key={s.l} delay={idx * 0.08}>
                 <GlassCard tilt className="p-6">
@@ -268,9 +273,9 @@ export function LandingPage() {
         <SectionGlow />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <FadeIn className="mx-auto max-w-3xl text-center">
-            <Badge variant="primary" className="mb-5">Pricing</Badge>
-            <h2 className="text-4xl font-semibold tracking-tight text-text-primary sm:text-5xl">Simple plans, premium intelligence.</h2>
-            <p className="mt-5 text-lg text-text-secondary">Start lean, then scale into API automation and compliance workflows.</p>
+            <Badge variant="primary" className="mb-5">{content.pricingBadge}</Badge>
+            <h2 className="text-4xl font-semibold tracking-tight text-text-primary sm:text-5xl">{content.pricingTitle}</h2>
+            <p className="mt-5 text-lg text-text-secondary">{content.pricingText}</p>
           </FadeIn>
 
           <div className="mt-16 grid gap-6 lg:grid-cols-3">
@@ -314,8 +319,8 @@ export function LandingPage() {
       <section id="temoignages" className="relative scroll-mt-24 py-28 sm:py-36">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <FadeIn className="mx-auto max-w-3xl text-center">
-            <Badge variant="success" className="mb-5">Trusted by export teams</Badge>
-            <h2 className="text-4xl font-semibold tracking-tight text-text-primary sm:text-5xl">The signal is clear before the shipment leaves port.</h2>
+            <Badge variant="success" className="mb-5">{content.testimonialsBadge}</Badge>
+            <h2 className="text-4xl font-semibold tracking-tight text-text-primary sm:text-5xl">{content.testimonialsTitle}</h2>
           </FadeIn>
           <div className="mt-14 grid gap-6 md:grid-cols-3">
             {[
@@ -343,16 +348,16 @@ export function LandingPage() {
             <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.045] px-8 py-16 text-center shadow-[0_38px_120px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:px-16">
               <div className="aurora-field absolute inset-0 opacity-60" aria-hidden />
               <div className="relative">
-                <Badge variant="primary" className="mb-5">Ready when you are</Badge>
+                <Badge variant="primary" className="mb-5">{content.readyBadge}</Badge>
                 <h2 className="text-4xl font-semibold tracking-tight text-text-primary sm:text-5xl">
-                  Make your next export decision feel inevitable.
+                  {content.readyTitle}
                 </h2>
                 <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-text-secondary">
-                  Launch a market analysis in minutes and move from scattered signals to a confident action plan.
+                  {content.readyText}
                 </p>
                 <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                  <AnimatedButton href="/analyze" size="lg">Start analysis</AnimatedButton>
-                  <AnimatedButton href="/login" variant="secondary" size="lg">Sign in</AnimatedButton>
+                  <AnimatedButton href="/analyze" size="lg">{content.runAnalysis}</AnimatedButton>
+                  <AnimatedButton href="/login" variant="secondary" size="lg">{t('auth.loginAction')}</AnimatedButton>
                 </div>
               </div>
             </div>

@@ -1,21 +1,22 @@
 'use client'
 
 import Link from 'next/link'
-import { Globe, Menu, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AnimatedButton } from '@/components/ui/animated-button'
-
-const NAV = [
-  { label: 'Produit', href: '/#produit' },
-  { label: 'Fonctionnalités', href: '/#fonctionnalites' },
-  { label: 'Chiffres', href: '/#chiffres' },
-  { label: 'Tarifs', href: '/pricing' },
-  { label: 'Témoignages', href: '/#temoignages' },
-]
+import { LanguageSwitcher } from '@/components/i18n/LanguageSwitcher'
+import { useI18n } from '@/lib/i18n'
+import { BrandLogo } from '@/components/brand/BrandLogo'
 
 export function MarketingShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
+  const { t } = useI18n()
+  const nav = [
+    { label: t('marketing.product'), href: '/#produit' }, { label: t('marketing.features'), href: '/#fonctionnalites' },
+    { label: t('marketing.figures'), href: '/#chiffres' }, { label: t('nav.pricing'), href: '/pricing' },
+    { label: t('marketing.testimonials'), href: '/#temoignages' },
+  ]
 
   return (
     <div className="flex min-h-screen w-full max-w-full flex-col overflow-x-hidden bg-background">
@@ -23,15 +24,12 @@ export function MarketingShell({ children }: { children: ReactNode }) {
         <div className="mx-auto mt-4" style={{ width: 'min(80rem, calc(100vw - 2rem))' }}>
           <nav className="glass flex h-16 w-full min-w-0 items-center justify-between gap-3 rounded-2xl px-3 shadow-[0_18px_70px_rgba(0,0,0,0.2)] ring-1 ring-white/5 sm:px-4">
             <Link href="/" className="group flex items-center gap-2.5 rounded-xl px-2 py-1.5" onClick={() => setOpen(false)}>
-              <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 via-sky-500 to-accent-500 text-white shadow-lg shadow-primary-600/30 transition-transform duration-300 group-hover:scale-105">
-                <span className="absolute inset-0 rounded-xl bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
-                <Globe className="h-4 w-4" aria-hidden />
-              </span>
+              <BrandLogo size="sm" priority className="transition-transform duration-300 group-hover:scale-105" />
               <span className="font-semibold tracking-tight text-text-primary">MaroTrade</span>
             </Link>
 
             <div className="hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1 md:flex">
-              {NAV.map((item) => (
+              {nav.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -43,14 +41,15 @@ export function MarketingShell({ children }: { children: ReactNode }) {
             </div>
 
             <div className="flex items-center gap-2">
+              <LanguageSwitcher compact />
               <Link
                 href="/login"
                 className="hidden rounded-lg px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary sm:inline-block"
               >
-                Connexion
+                {t('auth.login')}
               </Link>
               <AnimatedButton href="/analyze" size="sm" className="hidden sm:inline-flex">
-                Essayer
+                {t('marketing.try')}
               </AnimatedButton>
               <button
                 type="button"
@@ -74,7 +73,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
             className="mx-4 mt-2 glass rounded-2xl p-4 shadow-[0_18px_70px_rgba(0,0,0,0.25)] md:hidden sm:mx-6"
             >
               <nav className="flex flex-col gap-1">
-                {NAV.map((item) => (
+                {nav.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
@@ -85,10 +84,10 @@ export function MarketingShell({ children }: { children: ReactNode }) {
                   </Link>
                 ))}
                 <Link href="/login" className="rounded-lg px-3 py-2.5 text-sm text-text-secondary" onClick={() => setOpen(false)}>
-                  Connexion
+                  {t('auth.login')}
                 </Link>
                 <AnimatedButton href="/dashboard" className="mt-2 w-full">
-                  Accéder à l&apos;app
+                  {t('marketing.openApp')}
                 </AnimatedButton>
               </nav>
             </motion.div>
@@ -103,34 +102,34 @@ export function MarketingShell({ children }: { children: ReactNode }) {
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Globe className="h-5 w-5 text-primary-400" />
+                <BrandLogo size="sm" />
                 <span className="font-semibold text-text-primary">MaroTrade Intelligence</span>
               </div>
               <p className="text-sm leading-relaxed text-text-muted">
-                Aide à la décision export pour les PME marocaines.
+                {t('marketing.tagline')}
               </p>
             </div>
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Produit</p>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">{t('marketing.product')}</p>
               <ul className="space-y-2 text-sm text-text-secondary">
-                <li><Link href="/#fonctionnalites" className="hover:text-primary-400">Fonctionnalités</Link></li>
-                <li><Link href="/pricing" className="hover:text-primary-400">Tarifs</Link></li>
-                <li><Link href="/dashboard" className="hover:text-primary-400">Application</Link></li>
+                <li><Link href="/#fonctionnalites" className="hover:text-primary-400">{t('marketing.features')}</Link></li>
+                <li><Link href="/pricing" className="hover:text-primary-400">{t('nav.pricing')}</Link></li>
+                <li><Link href="/dashboard" className="hover:text-primary-400">{t('marketing.openApp')}</Link></li>
               </ul>
             </div>
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Ressources</p>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">{t('marketing.resources')}</p>
               <ul className="space-y-2 text-sm text-text-secondary">
-                <li><Link href="/analyze" className="hover:text-primary-400">Nouvelle analyse</Link></li>
-                <li><Link href="/analytics" className="hover:text-primary-400">Analytics</Link></li>
-                <li><Link href="/regulations" className="hover:text-primary-400">Veille</Link></li>
+                <li><Link href="/analyze" className="hover:text-primary-400">{t('marketing.newAnalysis')}</Link></li>
+                <li><Link href="/analytics" className="hover:text-primary-400">{t('nav.analytics')}</Link></li>
+                <li><Link href="/regulations" className="hover:text-primary-400">{t('marketing.watch')}</Link></li>
               </ul>
             </div>
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Légal</p>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">{t('marketing.legal')}</p>
               <ul className="space-y-2 text-sm text-text-muted">
-                <li>Mentions légales</li>
-                <li>Confidentialité</li>
+                <li>{t('marketing.legalNotice')}</li>
+                <li>{t('marketing.privacy')}</li>
               </ul>
             </div>
           </div>

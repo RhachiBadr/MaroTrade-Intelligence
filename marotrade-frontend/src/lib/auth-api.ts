@@ -1,4 +1,6 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { getStoredLocale } from '@/lib/i18n'
+import { localizeBackendText } from '@/lib/i18n/backend-localization'
 
 export interface AuthUser {
   id: string
@@ -43,12 +45,13 @@ async function authRequest<T>(path: string, init?: RequestInit): Promise<T> {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
+      'Accept-Language': getStoredLocale(),
       ...init?.headers,
     },
   })
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
-    throw new Error(payload.detail || 'Une erreur est survenue.')
+    throw new Error(localizeBackendText(payload.detail || 'Une erreur est survenue.', getStoredLocale()))
   }
   return payload as T
 }

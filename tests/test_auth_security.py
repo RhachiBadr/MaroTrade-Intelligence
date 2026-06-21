@@ -1,8 +1,10 @@
 import unittest
+from unittest.mock import AsyncMock, Mock
 
 from fastapi.testclient import TestClient
 
 import api
+from services.auth.repository import AuthRepository
 from services.auth.security import (
     create_access_token,
     decode_access_token,
@@ -46,6 +48,28 @@ class TestAuthSecurity(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 401)
+
+
+class TestAuthRepository(unittest.IsolatedAsyncioTestCase):
+    async def test_workspace_results_are_wrapped_as_prisma_json(self):
+        from prisma import Json
+
+        repository = AuthRepository()
+        repository.available = True
+        repository.db = Mock()
+        repository.db.workspaceanalysis.create = AsyncMock()
+
+        await repository.save_workspace_analysis(
+            user_id="user-1",
+            organization_id="org-1",
+            product_name="Articles en cuir",
+            hs_code="4205",
+            top_n=5,
+            results=[{"import_value_usd": 1_000_000.0}],
+        )
+
+        data = repository.db.workspaceanalysis.create.await_args.kwargs["data"]
+        self.assertIsInstance(data["results"], Json)
 
 
 if __name__ == "__main__":
